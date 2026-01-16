@@ -13,3 +13,7 @@ fp-info-cache
 
 # Temporary / downloaded files
 PCB/downloads/
+PCB/FlexRC/FlexRC-backups
+
+# Editor / OS temp files
+~*
