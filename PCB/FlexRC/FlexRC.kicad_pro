@@ -480,7 +480,12 @@
     },
     "net_colors": null,
     "netclass_assignments": null,
-    "netclass_patterns": []
+    "netclass_patterns": [
+      {
+        "netclass": "Default",
+        "pattern": "GP11"
+      }
+    ]
   },
   "pcbnew": {
     "last_paths": {
@@ -597,8 +602,16 @@
       "version": 1
     },
     "net_format_name": "",
+    "ngspice": {
+      "fix_include_paths": true,
+      "meta": {
+        "version": 0
+      },
+      "model_mode": 4,
+      "workbook_filename": ""
+    },
     "page_layout_descr_file": "",
-    "plot_directory": "",
+    "plot_directory": "./",
     "space_save_all_events": true,
     "spice_current_sheet_as_root": false,
     "spice_external_command": "spice \"%I\"",
@@ -613,6 +626,26 @@
     [
       "0116ad82-ac95-4a03-bd4e-94de3191d2e0",
       "Root"
+    ],
+    [
+      "7e166add-16b4-495d-9eb5-24168b257373",
+      "Power"
+    ],
+    [
+      "38579fdb-5ac6-4328-8b11-3c58f6408327",
+      "MCU"
+    ],
+    [
+      "843562a6-3802-454d-9599-f7e6d5da5fbd",
+      "Radio"
+    ],
+    [
+      "e8e351e4-faf1-4c4b-86a9-7821414fba43",
+      "Buttons_Joys"
+    ],
+    [
+      "cc30013f-e3c0-4b7a-855c-63dbc26cdfb4",
+      "RGBs"
     ]
   ],
   "text_variables": {}
