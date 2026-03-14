@@ -5,7 +5,6 @@
 #include "controller/ui/loop_main.h"
 #include "controller/ui/loop_settings.h"
 #include "controller/ui/settings_pages/calib_joy.h"
-#include "controller/ui/settings_pages/calib_keys.h"
 #include "controller/ui/settings_pages/set_deadzone.h"
 #include "controller/ui/settings_pages/set_expo.h"
 #include "controller/config.h"
@@ -16,7 +15,6 @@ enum class UiMode
     Main = 0,
     Settings,
     JoyCalibration,
-    KeyCalibration,
     Deadband,
     Expo
 };
@@ -50,10 +48,6 @@ void menuInit()
     case StartScreen::DirectDeadzone:
         setDeadzoneStart();
         uiMode = UiMode::Deadband;
-        break;
-    case StartScreen::DirectKeysThr:
-        calibKeysStart();
-        uiMode = UiMode::KeyCalibration;
         break;
     default:
         screenMainSetStartPage(1, false);
@@ -95,12 +89,6 @@ bool menuLoop(int mode, uint8_t batState)
             uiMode = UiMode::Expo;
             return true; // block comm during expo page
         }
-        if (r == LoopSettingsResult::StartKeyCalibration)
-        {
-            calibKeysStart();
-            uiMode = UiMode::KeyCalibration;
-            return true; // block comm during keyboard calibration
-        }
         if (r == LoopSettingsResult::ExitToMain)
         {
             uiMode = UiMode::Main;
@@ -125,18 +113,6 @@ bool menuLoop(int mode, uint8_t batState)
             return false;
         }
         return true; // Running
-    }
-
-    case UiMode::KeyCalibration:
-    {
-        KeyCalibrationResult kr = calibKeysLoop();
-        if (kr == KeyCalibrationResult::ExitToSettings)
-        {
-            loopSettingsStart(4); // return to KEY THR page
-            uiMode = UiMode::Settings;
-            return false;
-        }
-        return true;
     }
 
     case UiMode::Deadband:

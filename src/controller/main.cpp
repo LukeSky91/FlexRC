@@ -8,6 +8,7 @@
 #include "controller/buttons.h"
 #include "controller/leds.h"
 #include "controller/joysticks.h"
+#include "controller/storage.h"
 #include "controller/ui/menu.h"
 #include "controller/receiver.h"
 
@@ -27,15 +28,15 @@ static int8_t mapToPct(int16_t v)
 void setup()
 {
     Serial.begin(115200);
+    storageInit();
 
     // ===== I2C globalnie =====
     // Mega: SDA=20, SCL=21. Nano: A4/A5.
-    Wire.begin();
-    Wire.setClock(400000);
+    Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN, I2C_CLOCK_HZ);
+    Wire.setClock(I2C_CLOCK_HZ);
 
     // Timeout w µs (na AVR): 50ms => 50000
     // reset=false: NIE resetuj sprzŽttowego TWI w ‘>rodku transakcji (u8g2/SH1106 tego nie lubi).
-    Wire.setWireTimeout(50000, false);
 
     // ===== Inity peryferiÆˆw =====
     displayInit(); // tylko inicjalizacja wy‘>wietlacza (bez blokowania sterowania w loop)
@@ -49,10 +50,10 @@ void setup()
     joyR.setDeadzone(JOY_DEADZONE_DEFAULT, JOY_DEADZONE_DEFAULT);
     joyL.setExpo(JOY_EXPO_DEFAULT);
     joyR.setExpo(JOY_EXPO_DEFAULT);
-    joyL.setCalibration(0, 1023, 0, 1023);
-    joyR.setCalibration(0, 1023, 0, 1023);
-    joyL.setCenter(512, 512);
-    joyR.setCenter(512, 512);
+    joyL.setCalibration(0, ADC_MAX, 0, ADC_MAX);
+    joyR.setCalibration(0, ADC_MAX, 0, ADC_MAX);
+    joyL.setCenter(ADC_CENTER, ADC_CENTER);
+    joyR.setCenter(ADC_CENTER, ADC_CENTER);
     joysticksSaveCalibration();
     joysticksSaveDeadzone();
     joysticksSaveExpo();

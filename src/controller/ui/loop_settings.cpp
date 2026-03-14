@@ -5,9 +5,9 @@
 #include "common/time_utils.h"
 
 static uint32_t oledTick = 0;
-// 1=CALIB JOYS, 2=JOYS DEADZONE, 3=JOYS EXPO, 4=KEYS THRS
+// 1=CALIB JOYS, 2=JOYS DEADZONE, 3=JOYS EXPO
 static uint8_t page = 1;
-static const uint8_t totalPages = 4;
+static const uint8_t totalPages = 3;
 static bool initDone = false;
 static uint8_t prevPage = 1;
 static bool centerArmed = false;
@@ -97,10 +97,6 @@ LoopSettingsResult loopSettingsLoop(int mode, uint8_t batState)
         {
             return LoopSettingsResult::StartExpo;
         }
-        else if (page == 4)
-        {
-            return LoopSettingsResult::StartKeyCalibration;
-        }
     }
 
     // UI limiter: max 10 Hz (100 ms), unless pageChanged
@@ -114,29 +110,21 @@ LoopSettingsResult loopSettingsLoop(int mode, uint8_t batState)
     switch (page)
     {
     case 1:
-        line0[0] = '\0';
-        snprintf(line1, sizeof(line1), "    CALIB JOYS");
+        snprintf(line0, sizeof(line0), "   JOYSTICKS");
+        snprintf(line1, sizeof(line1), "     CALIBRATE");
         line2[0] = '\0';
         break;
 
     case 2:
-        line0[0] = '\0';
-        snprintf(line1, sizeof(line1), "   JOYS DEADZONE");
+        snprintf(line0, sizeof(line0), "   JOYSTICKS");
+        snprintf(line1, sizeof(line1), "     DEADZONE");
         line2[0] = '\0';
         break;
 
     case 3:
     {
-        line0[0] = '\0';
-        snprintf(line1, sizeof(line1), "    JOYS EXPO");
-        line2[0] = '\0';
-        break;
-    }
-
-    case 4:
-    {
-        line0[0] = '\0';
-        snprintf(line1, sizeof(line1), "    KEYS THRS");
+        snprintf(line0, sizeof(line0), "   JOYSTICKS");
+        snprintf(line1, sizeof(line1), "       EXPO");
         line2[0] = '\0';
         break;
     }

@@ -6,6 +6,7 @@
 #include "controller/receiver.h"
 #include "controller/buttons.h"
 #include "controller/ui/menu.h"
+#include "controller/config.h"
 
 static uint32_t oledTick = 0;
 static uint8_t page = 1; // 1=JOYS PCT, 2=L, 3=R, 4=AUX, 5=SETTINGS
@@ -19,8 +20,9 @@ static uint8_t prevPage = 1;
 
 static int16_t rawToPct(int raw)
 {
-    long centered = (long)raw - 512;
-    long scaled = centered * 100 / 511; // 0..1023 -> -100..100
+    long centered = (long)raw - ADC_CENTER;
+    long denom = (ADC_CENTER > 0) ? (ADC_CENTER - 1) : 1;
+    long scaled = centered * 100 / denom;
     if (scaled > 100)
         scaled = 100;
     if (scaled < -100)

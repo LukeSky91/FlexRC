@@ -7,7 +7,6 @@ enum class LoopSettingsResult
     StartCalibration,
     StartDeadband,
     StartExpo,
-    StartKeyCalibration,
     ExitToMain
 };
 

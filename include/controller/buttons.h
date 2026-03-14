@@ -1,13 +1,7 @@
 #pragma once
 #include <Arduino.h>
 
-/*
- * Analog keyboard on A7 (resistor ladder).
- *
- * Legacy naming:
- *  - LEFT  == old BTN1
- *  - RIGHT == old BTN2
- */
+// Digital buttons wired directly to GPIOs.
 
 enum class Key : uint8_t
 {
@@ -16,7 +10,9 @@ enum class Key : uint8_t
     Right,
     Up,
     Down,
-    Center
+    Center,
+    F1,
+    F2
 };
 
 void buttonsTick(); // updates key state, does not consume events
@@ -66,10 +62,10 @@ uint32_t buttonsLastReleaseDuration();
 // Last released key.
 Key buttonsLastReleaseKey();
 
-// Current raw ADC reading (0..1023) of the keyboard.
+// Legacy diagnostic helper kept temporarily for the old calibration screen.
 uint16_t buttonsReadRawAdc();
 
-// Per-key thresholds (pick the highest crossed threshold)
+// Legacy threshold API kept temporarily for the old calibration screen.
 int buttonsGetThreshold(Key k);
 void buttonsSetThreshold(Key k, int value);
 void buttonsAdjustThreshold(Key k, int delta);

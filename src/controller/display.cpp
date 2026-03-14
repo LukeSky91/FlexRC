@@ -64,7 +64,7 @@ static void renderAll()
     dirty = false;
 }
 
-// Try to detect Wire timeout flag (AVR usually has it).
+// Try to detect Wire timeout flag where supported.
 static bool i2cTimeoutFlagGet()
 {
 #if defined(ARDUINO_ARCH_AVR)
@@ -82,28 +82,11 @@ static void i2cTimeoutFlagClear()
 }
 
 // ---- I2C "unstick" ----
-static uint8_t i2cPinSDA()
-{
-#if defined(ARDUINO_AVR_MEGA2560) || defined(ARDUINO_AVR_MEGA)
-    return 20;
-#else
-    return A4;
-#endif
-}
-static uint8_t i2cPinSCL()
-{
-#if defined(ARDUINO_AVR_MEGA2560) || defined(ARDUINO_AVR_MEGA)
-    return 21;
-#else
-    return A5;
-#endif
-}
-
 // Free the bus: 9 SCL clocks + STOP
 static void i2cUnstick()
 {
-    const uint8_t sda = i2cPinSDA();
-    const uint8_t scl = i2cPinSCL();
+    const uint8_t sda = I2C_SDA_PIN;
+    const uint8_t scl = I2C_SCL_PIN;
 
     pinMode(sda, INPUT_PULLUP);
     pinMode(scl, INPUT_PULLUP);
@@ -136,11 +119,11 @@ static bool oledRecoverNow()
 
     Wire.end();
     delay(2);
-    Wire.begin();
-    Wire.setClock(400000);
+    Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN, I2C_CLOCK_HZ);
+    Wire.setClock(I2C_CLOCK_HZ);
 
     oled.begin();
-    oled.setBusClock(400000);
+    oled.setBusClock(I2C_CLOCK_HZ);
     oled.setFont(u8g2_font_6x10_mr);
 
     dirty = true;
@@ -153,7 +136,7 @@ static bool oledRecoverNow()
 void displayInit()
 {
     oled.begin();
-    oled.setBusClock(400000);
+    oled.setBusClock(I2C_CLOCK_HZ);
     oled.setFont(u8g2_font_6x10_mr);
 
     clearLines();

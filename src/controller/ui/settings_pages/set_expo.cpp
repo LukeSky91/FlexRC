@@ -8,6 +8,7 @@
 #include "controller/buttons.h"
 #include "common/time_utils.h"
 #include "controller/display.h"
+#include "controller/config.h"
 
 static uint32_t oledTick = 0;
 
@@ -118,7 +119,7 @@ static void overlayExpo(U8G2 &oled, void *)
         return curved * 100.0f;
     };
 
-    float dzNorm = (float)joysticksGetDeadzoneAxis(axisIdx) / 512.0f;
+    float dzNorm = (float)joysticksGetDeadzoneAxis(axisIdx) / (float)ADC_CENTER;
     dzNorm = constrain(dzNorm, 0.0f, 0.999f);
 
     auto yFromPct = [&](float pct) -> int

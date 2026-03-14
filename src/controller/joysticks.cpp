@@ -1,5 +1,5 @@
 ﻿#include <Arduino.h>
-#include <EEPROM.h>
+#include "controller/storage.h"
 #include <math.h>
 #include <string.h>
 #include "controller/joysticks.h"
@@ -49,11 +49,10 @@ static uint16_t crcCal(const CalData &d)
     return (uint16_t)(d.magic ^ d.minX ^ d.maxX ^ d.centerX ^ d.minY ^ d.maxY ^ d.centerY ^ 0xA55A);
 }
 
-static const uint16_t EEPROM_ADDR_L = 0;
-static const uint16_t EEPROM_ADDR_R = EEPROM_ADDR_L + sizeof(CalData);
-static const uint16_t EEPROM_ADDR_DEADZONE = EEPROM_ADDR_R + sizeof(CalData);
-static const uint16_t EEPROM_ADDR_EXPO = EEPROM_ADDR_DEADZONE + sizeof(DeadzoneData);
-static const uint16_t EEPROM_ADDR_AFTER_EXPO = EEPROM_ADDR_EXPO + sizeof(ExpoData);
+static const char *STORAGE_KEY_JOY_L = "joy_l_cal";
+static const char *STORAGE_KEY_JOY_R = "joy_r_cal";
+static const char *STORAGE_KEY_DEADZONE = "joy_deadzone";
+static const char *STORAGE_KEY_EXPO = "joy_expo";
 
 static uint16_t crcDeadzone(const DeadzoneData &d)
 {
@@ -64,8 +63,8 @@ static int clampDeadzone(int dz)
 {
     if (dz < 0)
         dz = 0;
-    if (dz > 400)
-        dz = 400;
+    if (dz > (ADC_MAX * 400 / 1023))
+        dz = (ADC_MAX * 400 / 1023);
     return dz;
 }
 
@@ -96,6 +95,10 @@ static float clampExpo(float e)
 
 void joystickInit()
 {
+#if defined(ARDUINO_ARCH_ESP32)
+    analogReadResolution(ADC_BITS);
+#endif
+
     joyL.begin();
     joyR.begin();
 
@@ -113,8 +116,8 @@ void joystickInit()
     joysticksLoadCalibration();
 
     DeadzoneData d{};
-    EEPROM.get(EEPROM_ADDR_DEADZONE, d);
-    if (d.magic == DEADZONE_MAGIC && d.crc == crcDeadzone(d))
+    if (storageReadBlob(STORAGE_KEY_DEADZONE, &d, sizeof(d)) &&
+        d.magic == DEADZONE_MAGIC && d.crc == crcDeadzone(d))
     {
         int lx = clampDeadzone((int)d.dzLX);
         int ly = clampDeadzone((int)d.dzLY);
@@ -125,8 +128,8 @@ void joystickInit()
     }
 
     ExpoData ex{};
-    EEPROM.get(EEPROM_ADDR_EXPO, ex);
-    if (ex.magic == EXPO_MAGIC && ex.crc == crcExpo(ex))
+    if (storageReadBlob(STORAGE_KEY_EXPO, &ex, sizeof(ex)) &&
+        ex.magic == EXPO_MAGIC && ex.crc == crcExpo(ex))
     {
         joyL.setExpoX(clampExpo(ex.exLX));
         joyL.setExpoY(clampExpo(ex.exLY));
@@ -177,22 +180,23 @@ int Joystick::readRawInvertedY() const
 
 int Joystick::applyInvert(int raw, bool isX) const
 {
-    return (isX ? invertX : invertY) ? (1023 - raw) : raw;
+    return (isX ? invertX : invertY) ? (ADC_MAX - raw) : raw;
 }
 
 // ------------------------------------
 //       KALIBRACJA
 // ------------------------------------
-bool Joystick::loadCalibration(uint16_t addr)
+bool Joystick::loadCalibration(const char *key)
 {
     CalData d{};
-    EEPROM.get(addr, d);
+    if (!storageReadBlob(key, &d, sizeof(d)))
+        return false;
 
     if (d.magic != CAL_MAGIC || d.crc != crcCal(d))
         return false;
     if (d.minX >= d.maxX || d.minY >= d.maxY)
         return false;
-    if (d.maxX > 1023 || d.maxY > 1023)
+    if (d.maxX > ADC_MAX || d.maxY > ADC_MAX)
         return false;
 
     calMinX = d.minX;
@@ -212,7 +216,7 @@ bool Joystick::loadCalibration(uint16_t addr)
     return true;
 }
 
-void Joystick::saveCalibration(uint16_t addr)
+void Joystick::saveCalibration(const char *key)
 {
     CalData d{};
     d.magic = CAL_MAGIC;
@@ -223,12 +227,12 @@ void Joystick::saveCalibration(uint16_t addr)
     d.maxY = (uint16_t)calMaxY;
     d.centerY = (uint16_t)centerY;
     d.crc = crcCal(d);
-    EEPROM.put(addr, d);
+    storageWriteBlob(key, &d, sizeof(d));
 }
 
 void Joystick::startCalibration()
 {
-    calMinX = calMinY = 1023;
+    calMinX = calMinY = ADC_MAX;
     calMaxX = calMaxY = 0;
 }
 
@@ -253,12 +257,12 @@ void Joystick::finishCalibration()
     if (calMaxX <= calMinX + 2)
     {
         calMinX = 0;
-        calMaxX = 1023;
+        calMaxX = ADC_MAX;
     }
     if (calMaxY <= calMinY + 2)
     {
         calMinY = 0;
-        calMaxY = 1023;
+        calMaxY = ADC_MAX;
     }
 
     centerX = (calMinX + calMaxX) / 2;
@@ -267,20 +271,20 @@ void Joystick::finishCalibration()
 
 void Joystick::setCalibration(int minX, int maxX, int minY, int maxY)
 {
-    calMinX = (minX < 0) ? 0 : (minX > 1023 ? 1023 : minX);
-    calMaxX = (maxX < 0) ? 0 : (maxX > 1023 ? 1023 : maxX);
-    calMinY = (minY < 0) ? 0 : (minY > 1023 ? 1023 : minY);
-    calMaxY = (maxY < 0) ? 0 : (maxY > 1023 ? 1023 : maxY);
+    calMinX = (minX < 0) ? 0 : (minX > ADC_MAX ? ADC_MAX : minX);
+    calMaxX = (maxX < 0) ? 0 : (maxX > ADC_MAX ? ADC_MAX : maxX);
+    calMinY = (minY < 0) ? 0 : (minY > ADC_MAX ? ADC_MAX : minY);
+    calMaxY = (maxY < 0) ? 0 : (maxY > ADC_MAX ? ADC_MAX : maxY);
 
     if (calMaxX <= calMinX + 2)
     {
         calMinX = 0;
-        calMaxX = 1023;
+        calMaxX = ADC_MAX;
     }
     if (calMaxY <= calMinY + 2)
     {
         calMinY = 0;
-        calMaxY = 1023;
+        calMaxY = ADC_MAX;
     }
 
     centerX = (calMinX + calMaxX) / 2;
@@ -292,9 +296,9 @@ void Joystick::recenterAround(int centerX, int centerY)
     int spanX = calMaxX - calMinX;
     int spanY = calMaxY - calMinY;
     if (spanX < 2)
-        spanX = 1023;
+        spanX = ADC_MAX;
     if (spanY < 2)
-        spanY = 1023;
+        spanY = ADC_MAX;
 
     int halfX = spanX / 2;
     int halfY = spanY / 2;
@@ -306,22 +310,22 @@ void Joystick::recenterAround(int centerX, int centerY)
 
     if (calMinX < 0)
         calMinX = 0;
-    if (calMaxX > 1023)
-        calMaxX = 1023;
+    if (calMaxX > ADC_MAX)
+        calMaxX = ADC_MAX;
     if (calMinY < 0)
         calMinY = 0;
-    if (calMaxY > 1023)
-        calMaxY = 1023;
+    if (calMaxY > ADC_MAX)
+        calMaxY = ADC_MAX;
 
     if (calMaxX <= calMinX + 2)
     {
         calMinX = 0;
-        calMaxX = 1023;
+        calMaxX = ADC_MAX;
     }
     if (calMaxY <= calMinY + 2)
     {
         calMinY = 0;
-        calMaxY = 1023;
+        calMaxY = ADC_MAX;
     }
 
     this->centerX = (centerX < calMinX) ? calMinX : (centerX > calMaxX ? calMaxX : centerX);
@@ -330,8 +334,8 @@ void Joystick::recenterAround(int centerX, int centerY)
 
 void joysticksLoadCalibration()
 {
-    bool okL = joyL.loadCalibration(EEPROM_ADDR_L);
-    bool okR = joyR.loadCalibration(EEPROM_ADDR_R);
+    bool okL = joyL.loadCalibration(STORAGE_KEY_JOY_L);
+    bool okR = joyR.loadCalibration(STORAGE_KEY_JOY_R);
     if (!okL)
     {
         joyL.finishCalibration(); // ustawia default range
@@ -344,8 +348,8 @@ void joysticksLoadCalibration()
 
 void joysticksSaveCalibration()
 {
-    joyL.saveCalibration(EEPROM_ADDR_L);
-    joyR.saveCalibration(EEPROM_ADDR_R);
+    joyL.saveCalibration(STORAGE_KEY_JOY_L);
+    joyR.saveCalibration(STORAGE_KEY_JOY_R);
 }
 
 int joysticksGetDeadzoneAxis(uint8_t axis)
@@ -396,7 +400,7 @@ void joysticksSaveDeadzone()
     d.dzRX = (uint16_t)clampDeadzone(joyR.getDeadzoneX());
     d.dzRY = (uint16_t)clampDeadzone(joyR.getDeadzoneY());
     d.crc = crcDeadzone(d);
-    EEPROM.put(EEPROM_ADDR_DEADZONE, d);
+    storageWriteBlob(STORAGE_KEY_DEADZONE, &d, sizeof(d));
 }
 
 float joysticksGetExpoAxis(uint8_t axis)
@@ -447,14 +451,14 @@ void joysticksSaveExpo()
     d.exRX = clampExpo(joyR.getExpoX());
     d.exRY = clampExpo(joyR.getExpoY());
     d.crc = crcExpo(d);
-    EEPROM.put(EEPROM_ADDR_EXPO, d);
+    storageWriteBlob(STORAGE_KEY_EXPO, &d, sizeof(d));
 }
 
 void joysticksSaveExpoAxis(uint8_t axis)
 {
     ExpoData d{};
-    EEPROM.get(EEPROM_ADDR_EXPO, d);
-    bool valid = (d.magic == EXPO_MAGIC && d.crc == crcExpo(d));
+    bool valid = storageReadBlob(STORAGE_KEY_EXPO, &d, sizeof(d)) &&
+                 d.magic == EXPO_MAGIC && d.crc == crcExpo(d);
     if (!valid)
     {
         d.magic = EXPO_MAGIC;
@@ -474,18 +478,13 @@ void joysticksSaveExpoAxis(uint8_t axis)
     }
 
     d.crc = crcExpo(d);
-    EEPROM.put(EEPROM_ADDR_EXPO, d);
-}
-
-uint16_t joysticksEepromAddrAfterExpo()
-{
-    return EEPROM_ADDR_AFTER_EXPO;
+    storageWriteBlob(STORAGE_KEY_EXPO, &d, sizeof(d));
 }
 
 int16_t Joystick::processAxis(int raw, const char *axisName)
 {
 
-    raw = constrain(raw, 0, 1023);
+    raw = constrain(raw, 0, ADC_MAX);
 
     bool isX = (axisName && axisName[0] == 'X');
 
@@ -497,7 +496,7 @@ int16_t Joystick::processAxis(int raw, const char *axisName)
     if (calMax <= calMin + 2)
     {
         calMin = 0;
-        calMax = 1023;
+        calMax = ADC_MAX;
     } // fallback gdy brak kalibracji
     if (calCenter < calMin || calCenter > calMax)
         calCenter = (calMin + calMax) / 2;

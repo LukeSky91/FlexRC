@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include "controller/config.h"
 
 // Initialize both joysticks
 void joystickInit();
@@ -16,9 +17,6 @@ float joysticksGetExpoAxis(uint8_t axis);
 void joysticksSetExpoAxis(uint8_t axis, float e);
 void joysticksSaveExpoAxis(uint8_t axis);
 void joysticksSaveExpo();
-
-// EEPROM layout helper: address after Expo block (for other modules)
-uint16_t joysticksEepromAddrAfterExpo();
 
 class Joystick {
 public:
@@ -49,8 +47,8 @@ public:
     void startCalibration();
     void updateCalibrationSample();
     void finishCalibration();
-    bool loadCalibration(uint16_t addr);
-    void saveCalibration(uint16_t addr);
+    bool loadCalibration(const char *key);
+    void saveCalibration(const char *key);
     int getCalMinX() const { return calMinX; }
     int getCalMaxX() const { return calMaxX; }
     int getCalMinY() const { return calMinY; }
@@ -69,14 +67,14 @@ private:
 
     bool invertX = false;
     bool invertY = false;
-    int deadzoneX = 40;
-    int deadzoneY = 40;
+    int deadzoneX = JOY_DEADZONE_DEFAULT;
+    int deadzoneY = JOY_DEADZONE_DEFAULT;
     float expoX = 1.8f;
     float expoY = 1.8f;
 
-    int calMinX = 0, calMaxX = 1023;
-    int calMinY = 0, calMaxY = 1023;
-    int centerX = 512, centerY = 512;
+    int calMinX = 0, calMaxX = ADC_MAX;
+    int calMinY = 0, calMaxY = ADC_MAX;
+    int centerX = ADC_CENTER, centerY = ADC_CENTER;
 
     int readAxisRaw(uint8_t pin) const;
     int applyInvert(int raw, bool isX) const;

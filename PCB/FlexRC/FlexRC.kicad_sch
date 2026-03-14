@@ -4,6 +4,14 @@
 	(generator_version "9.0")
 	(uuid "0116ad82-ac95-4a03-bd4e-94de3191d2e0")
 	(paper "A4")
+	(title_block
+		(title "FlexRC")
+		(date "2026-03-06")
+		(rev "V1")
+		(company "Flex Electronics")
+		(comment 1 "Luke")
+		(comment 2 "https://github.com/LukeSky91/FlexRC")
+	)
 	(lib_symbols)
 	(sheet
 		(at 25.4 63.5)
@@ -21,7 +29,7 @@
 			(color 0 0 0 0.0000)
 		)
 		(uuid "38579fdb-5ac6-4328-8b11-3c58f6408327")
-		(property "Sheetname" "MCU"
+		(property "Sheetname" "MCU_RADIO_OLED"
 			(at 25.4 62.7884 0)
 			(effects
 				(font
@@ -90,48 +98,6 @@
 		)
 	)
 	(sheet
-		(at 25.4 101.6)
-		(size 38.1 25.4)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(stroke
-			(width 0.1524)
-			(type solid)
-		)
-		(fill
-			(color 0 0 0 0.0000)
-		)
-		(uuid "843562a6-3802-454d-9599-f7e6d5da5fbd")
-		(property "Sheetname" "Radio"
-			(at 25.4 100.8884 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left bottom)
-			)
-		)
-		(property "Sheetfile" "Radio.kicad_sch"
-			(at 25.4 127.5846 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left top)
-			)
-		)
-		(instances
-			(project "FlexRC"
-				(path "/0116ad82-ac95-4a03-bd4e-94de3191d2e0"
-					(page "4")
-				)
-			)
-		)
-	)
-	(sheet
 		(at 76.2 63.5)
 		(size 38.1 25.4)
 		(exclude_from_sim no)
@@ -168,7 +134,7 @@
 		(instances
 			(project "FlexRC"
 				(path "/0116ad82-ac95-4a03-bd4e-94de3191d2e0"
-					(page "9")
+					(page "5")
 				)
 			)
 		)
@@ -210,7 +176,7 @@
 		(instances
 			(project "FlexRC"
 				(path "/0116ad82-ac95-4a03-bd4e-94de3191d2e0"
-					(page "8")
+					(page "4")
 				)
 			)
 		)

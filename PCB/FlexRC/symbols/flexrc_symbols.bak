@@ -2,6 +2,160 @@
 	(version 20241209)
 	(generator "kicad_symbol_editor")
 	(generator_version "9.0")
+	(symbol "5V_buck"
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "U"
+			(at -7.112 6.096 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "5V_mini_buck"
+			(at 5.842 6.096 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 0 8.382 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 2.54 10.668 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Buck DC/DC Converter, 3A, 5V Output Voltage, 5-30V Input Voltage"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_keywords" "Buck DC/DC converter"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_fp_filters" "SOIC*3.9x4.9mm*P1.27mm*"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "5V_buck_0_1"
+			(rectangle
+				(start -7.62 5.08)
+				(end 7.62 -5.08)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type background)
+				)
+			)
+		)
+		(symbol "5V_buck_1_1"
+			(pin power_in line
+				(at -10.16 2.54 0)
+				(length 2.54)
+				(name "VIN"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at 0 -7.62 90)
+				(length 2.54)
+				(name "GND"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at 0 -7.62 90)
+				(length 2.54)
+				(name "GND"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "4"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin power_out line
+				(at 10.16 2.54 180)
+				(length 2.54)
+				(name "OUT"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "3"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
 	(symbol "Balancer_2S"
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -136,8 +290,8 @@
 					)
 				)
 			)
-			(pin power_out line
-				(at 2.54 2.54 0)
+			(pin power_in line
+				(at 7.62 2.54 180)
 				(length 2.54)
 				(name "P+"
 					(effects
@@ -154,8 +308,8 @@
 					)
 				)
 			)
-			(pin power_out line
-				(at 2.54 -2.54 0)
+			(pin power_in line
+				(at 7.62 -2.54 180)
 				(length 2.54)
 				(name "P-"
 					(effects
@@ -335,7 +489,7 @@
 		(in_bom yes)
 		(on_board yes)
 		(property "Reference" "DS"
-			(at 0 8.509 0)
+			(at 0 12.065 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -343,7 +497,7 @@
 			)
 		)
 		(property "Value" "SSD1306_128x64"
-			(at 0 10.414 0)
+			(at 0 13.97 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -388,8 +542,8 @@
 		)
 		(symbol "OLED_SSD1306_128x64_Module_1_1"
 			(rectangle
-				(start -3.81 7.62)
-				(end 3.81 -7.62)
+				(start -5.08 7.62)
+				(end 5.08 -7.62)
 				(stroke
 					(width 0)
 					(type solid)
@@ -398,53 +552,8 @@
 					(type background)
 				)
 			)
-			(text "OLED 128x64\nSSD1306 / SH1106\nI2C\nSCL = SCK on module silkscreen"
-				(at -3.556 6.604 0)
-				(effects
-					(font
-						(size 0.254 0.254)
-					)
-					(justify left)
-				)
-			)
-			(pin power_in line
-				(at 6.35 3.81 180)
-				(length 2.54)
-				(name "VDD"
-					(effects
-						(font
-							(size 1.27 1.27)
-						)
-					)
-				)
-				(number "1"
-					(effects
-						(font
-							(size 1.27 1.27)
-						)
-					)
-				)
-			)
-			(pin power_in line
-				(at 6.35 1.27 180)
-				(length 2.54)
-				(name "GND"
-					(effects
-						(font
-							(size 1.27 1.27)
-						)
-					)
-				)
-				(number "2"
-					(effects
-						(font
-							(size 1.27 1.27)
-						)
-					)
-				)
-			)
 			(pin input line
-				(at 6.35 -3.81 180)
+				(at -7.62 1.27 0)
 				(length 2.54)
 				(name "SCL"
 					(effects
@@ -462,7 +571,7 @@
 				)
 			)
 			(pin bidirectional line
-				(at 6.35 -6.35 180)
+				(at -7.62 -1.27 0)
 				(length 2.54)
 				(name "SDA"
 					(effects
@@ -472,6 +581,42 @@
 					)
 				)
 				(number "4"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at 0 10.16 270)
+				(length 2.54)
+				(name "VDD"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at 0 -10.16 90)
+				(length 2.54)
+				(name "GND"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -1868,14 +2013,14 @@
 			(pin passive line
 				(at -12.7 5.08 0)
 				(length 2.54)
-				(name "V_GND"
+				(name "H_3.3V"
 					(effects
 						(font
 							(size 1.27 1.27)
 						)
 					)
 				)
-				(number "Y3"
+				(number "X1"
 					(effects
 						(font
 							(size 1.27 1.27)
@@ -1886,14 +2031,14 @@
 			(pin passive line
 				(at -12.7 0 0)
 				(length 2.54)
-				(name "H_3.3V"
+				(name "V_GND"
 					(effects
 						(font
 							(size 1.27 1.27)
 						)
 					)
 				)
-				(number "X1"
+				(number "Y3"
 					(effects
 						(font
 							(size 1.27 1.27)

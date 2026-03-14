@@ -7,6 +7,7 @@
 #include <common/comm.h>
 
 #include <RF24.h>
+#include <SPI.h>
 #include <string.h>
 
 /*
@@ -60,7 +61,14 @@ bool commInit(uint8_t cePin,
     if (!gRadio)
         gRadio = new RF24(cePin, csnPin);
 
-    if (!gRadio->begin())
+#if defined(ARDUINO_ARCH_ESP32)
+    SPI.begin(NRF_SCK_PIN, NRF_MISO_PIN, NRF_MOSI_PIN, NRF_CSN_PIN);
+    const bool radioBeginOk = gRadio->begin(&SPI);
+#else
+    const bool radioBeginOk = gRadio->begin();
+#endif
+
+    if (!radioBeginOk)
     {
         gRadioOk = false;
         return false;
