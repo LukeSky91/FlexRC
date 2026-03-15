@@ -25,8 +25,10 @@ public:
     void begin();
     bool pressed();
 
-    int16_t readX();
-    int16_t readY();
+    float readX();
+    float readY();
+    float readLinearX();
+    float readLinearY();
 
     void setInvertX(bool b) { invertX = b; }
     void setInvertY(bool b) { invertY = b; }
@@ -56,9 +58,10 @@ public:
     void setCalibration(int minX, int maxX, int minY, int maxY);
     void recenterAround(int centerX, int centerY);
 
-    // Raw ADC reads (no calibration/curve/expo applied)
+    // Raw ADC reads (physical ADC, no inversion/calibration/curve applied)
     int readRawX() const;
     int readRawY() const;
+    // Raw ADC reads in control orientation (with inversion, no calibration/curve applied)
     int readRawInvertedX() const;
     int readRawInvertedY() const;
 
@@ -78,7 +81,8 @@ private:
 
     int readAxisRaw(uint8_t pin) const;
     int applyInvert(int raw, bool isX) const;
-    int16_t processAxis(int raw, const char* axisName);
+    float processAxisLinear(int raw, const char *axisName) const;
+    float processAxis(int raw, const char* axisName);
 };
 
 // Global instances of left and right joysticks

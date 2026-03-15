@@ -8,6 +8,7 @@
 #include "controller/buttons.h"
 #include "controller/leds.h"
 #include "controller/joysticks.h"
+#include "controller/photo_sensor.h"
 #include "controller/storage.h"
 #include "controller/ui/menu.h"
 #include "controller/receiver.h"
@@ -15,14 +16,13 @@
 int mode = 0;
 static uint8_t batState = 0;
 
-static int8_t mapToPct(int16_t v)
+static int8_t controlToTx(float v)
 {
-    long scaled = (long)v * 100 / 32767;
-    if (scaled > 100)
-        scaled = 100;
-    if (scaled < -100)
-        scaled = -100;
-    return (int8_t)scaled;
+    if (v > 100.0f)
+        v = 100.0f;
+    if (v < -100.0f)
+        v = -100.0f;
+    return (int8_t)((v >= 0.0f) ? (v + 0.5f) : (v - 0.5f));
 }
 
 void setup()
@@ -43,6 +43,7 @@ void setup()
     buttonsInit();
     ledsInit();
     joystickInit();
+    photoSensorInit();
 
 #if EEPROM_FORCE_DEFAULTS_ON_BOOT
     // Force default config into EEPROM (use once after upload).
@@ -100,11 +101,11 @@ void loop()
     // 2) komunikacja / sterowanie (zawsze, je‘>li nie jeste‘> w kalibracji)
     if (!inCalib)
     {
-        CommFrame tx{
-            mapToPct(joyL.readX()),
-            mapToPct(joyL.readY()),
-            mapToPct(joyR.readX()),
-            mapToPct(joyR.readY()),
+         CommFrame tx{
+            controlToTx(joyL.readX()),
+            controlToTx(joyL.readY()),
+            controlToTx(joyR.readX()),
+            controlToTx(joyR.readY()),
             0u};
         receiverLoop(tx);
     }

@@ -164,7 +164,7 @@ void uiRenderPage(const char *line0,
     // ===== FOOTER THROTTLE (punkt B) =====
     // Footer może pokazywać ms, ale nie może brudzić OLED częściej niż co 250ms.
     static uint32_t footerTick = 0;
-    const bool footerDue = forceRedraw || everyMs(250, footerTick);
+    const bool footerDue = forceRedraw || everyMs(DISPLAY_UI_REFRESH_INTERVAL_MS, footerTick);
 
     if (footerOverride)
     {

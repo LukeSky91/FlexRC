@@ -2,6 +2,7 @@
 #include "controller/ui/settings_pages/set_deadzone.h"
 #include "controller/ui/menu.h"
 #include "controller/joysticks.h"
+#include "controller/config.h"
 #include "controller/buttons.h"
 #include "common/time_utils.h"
 
@@ -166,7 +167,7 @@ DeadbandResult setDeadzoneLoop()
         return DeadbandResult::ExitToSettings;
     }
 
-    if (!everyMs(250, oledTick))
+    if (!everyMs(DISPLAY_UI_REFRESH_INTERVAL_MS, oledTick))
         return DeadbandResult::Stay;
 
     render(false);

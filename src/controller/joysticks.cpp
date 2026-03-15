@@ -102,11 +102,10 @@ void joystickInit()
     joyL.begin();
     joyR.begin();
 
-    // X increases to the right, Y increases upward (no Y inversion)
     joyL.setInvertX(true);
     joyL.setInvertY(false);
     joyR.setInvertX(true);
-    joyR.setInvertY(false);
+    joyR.setInvertY(false); 
 
     joyL.setExpo(JOY_EXPO_DEFAULT);
     joyL.setDeadzone(JOY_DEADZONE_DEFAULT, JOY_DEADZONE_DEFAULT);
@@ -158,14 +157,12 @@ int Joystick::readAxisRaw(uint8_t pin) const
 
 int Joystick::readRawX() const
 {
-    // return raw in the same orientation as processing (honor invertX)
-    return applyInvert(readAxisRaw(pinX), true);
+    return readAxisRaw(pinX);
 }
 
 int Joystick::readRawY() const
 {
-    // return raw in the same orientation as processing (honor invertY)
-    return applyInvert(readAxisRaw(pinY), false);
+    return readAxisRaw(pinY);
 }
 
 int Joystick::readRawInvertedX() const
@@ -481,9 +478,8 @@ void joysticksSaveExpoAxis(uint8_t axis)
     storageWriteBlob(STORAGE_KEY_EXPO, &d, sizeof(d));
 }
 
-int16_t Joystick::processAxis(int raw, const char *axisName)
+float Joystick::processAxis(int raw, const char *axisName)
 {
-
     raw = constrain(raw, 0, ADC_MAX);
 
     bool isX = (axisName && axisName[0] == 'X');
@@ -511,7 +507,6 @@ int16_t Joystick::processAxis(int raw, const char *axisName)
     if (spanNeg < 1.0f)
         spanNeg = 1.0f;
 
-    constexpr float mid_16b = 32767.0f; // srodek 16-bit (65535/2)
     float centered = raw - mid;
     float absC = fabs(centered);
     float sign = (centered >= 0) ? 1.0f : -1.0f;
@@ -520,7 +515,7 @@ int16_t Joystick::processAxis(int raw, const char *axisName)
 
     if (absC <= dz || xMax <= dz)
     {
-        return 0;
+        return 0.0f;
     }
 
     float x = absC;
@@ -531,23 +526,68 @@ int16_t Joystick::processAxis(int raw, const char *axisName)
         norm = 1.0f;
 
     float expoVal = isX ? expoX : expoY;
-    float curved = roundf(mid_16b * pow(norm, 1.0f + expoVal));
-    if (curved > mid_16b)
-        curved = mid_16b;
+    float curved = 100.0f * powf(norm, 1.0f + expoVal);
+    if (curved > 100.0f)
+        curved = 100.0f;
 
-    int16_t out = (int16_t)(sign * curved);
-
-    return out;
+    return sign * curved;
 }
 
-int16_t Joystick::readX()
+float Joystick::processAxisLinear(int raw, const char *axisName) const
+{
+    raw = constrain(raw, 0, ADC_MAX);
+
+    bool isX = (axisName && axisName[0] == 'X');
+    raw = applyInvert(raw, isX);
+
+    int calMin = isX ? calMinX : calMinY;
+    int calMax = isX ? calMaxX : calMaxY;
+    int calCenter = isX ? centerX : centerY;
+    if (calMax <= calMin + 2)
+    {
+        calMin = 0;
+        calMax = ADC_MAX;
+    }
+    if (calCenter < calMin || calCenter > calMax)
+        calCenter = (calMin + calMax) / 2;
+
+    float spanPos = (float)(calMax - calCenter);
+    float spanNeg = (float)(calCenter - calMin);
+    if (spanPos < 1.0f)
+        spanPos = 1.0f;
+    if (spanNeg < 1.0f)
+        spanNeg = 1.0f;
+
+    float centered = (float)raw - (float)calCenter;
+    float sign = (centered >= 0.0f) ? 1.0f : -1.0f;
+    float span = (sign >= 0.0f) ? spanPos : spanNeg;
+    float norm = fabsf(centered) / span;
+    if (norm > 1.0f)
+        norm = 1.0f;
+
+    return sign * norm * 100.0f;
+}
+
+float Joystick::readX()
 {
     int raw = readAxisRaw(pinX);
     return processAxis(raw, "X");
 }
 
-int16_t Joystick::readY()
+float Joystick::readY()
 {
     int raw = readAxisRaw(pinY);
     return processAxis(raw, "Y");
+}
+
+float Joystick::readLinearX()
+{
+    int raw = readAxisRaw(pinX);
+    return processAxisLinear(raw, "X");
+}
+
+float Joystick::readLinearY()
+{
+    int raw = readAxisRaw(pinY);
+    return processAxisLinear(raw, "Y");
 }

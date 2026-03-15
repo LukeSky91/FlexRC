@@ -403,7 +403,7 @@ ExpoResult setExpoLoop()
     }
 
     // idle render every ~50ms
-    if (!everyMs(50, oledTick))
+    if (!everyMs(DISPLAY_UI_REFRESH_INTERVAL_MS, oledTick))
         return ExpoResult::Stay;
 
     render(false);

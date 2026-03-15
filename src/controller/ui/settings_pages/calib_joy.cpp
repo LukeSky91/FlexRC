@@ -3,6 +3,7 @@
 #include "controller/display.h"
 #include "controller/buttons.h"
 #include "controller/joysticks.h"
+#include "controller/config.h"
 #include "common/time_utils.h"
 
 static uint32_t calibTick = 0;
@@ -283,7 +284,7 @@ CalibrationResult calibJoyLoop()
         {
             int cx = j.readRawInvertedX();
             int cy = j.readRawInvertedY();
-            j.recenterAround(cx, cy);
+            j.setCenter(cx, cy);
             lastCtrX = cx;
             lastCtrY = cy;
             curSel = CalSel::Extents; // after save return to EXT
@@ -298,17 +299,17 @@ CalibrationResult calibJoyLoop()
 
     if (storedView)
     {
-        if (!everyMs(500, calibTick))
+        if (!everyMs(DISPLAY_UI_REFRESH_INTERVAL_MS, calibTick))
             return CalibrationResult::Running;
     }
     else if (curSel == CalSel::Extents)
     {
-        if (!everyMs(350, calibTick))
+        if (!everyMs(DISPLAY_UI_REFRESH_INTERVAL_MS, calibTick))
             return CalibrationResult::Running;
     }
     else
     {
-        if (!everyMs(500, calibTickCenter))
+        if (!everyMs(DISPLAY_UI_REFRESH_INTERVAL_MS, calibTickCenter))
             return CalibrationResult::Running;
     }
 

@@ -1,6 +1,7 @@
 ﻿#include <Arduino.h>
 #include "controller/ui/loop_settings.h"
 #include "controller/ui/menu.h"
+#include "controller/config.h"
 #include "controller/buttons.h"
 #include "common/time_utils.h"
 
@@ -100,7 +101,7 @@ LoopSettingsResult loopSettingsLoop(int mode, uint8_t batState)
     }
 
     // UI limiter: max 10 Hz (100 ms), unless pageChanged
-    if (!pageChanged && !everyMs(100, oledTick))
+    if (!pageChanged && !everyMs(DISPLAY_UI_REFRESH_INTERVAL_MS, oledTick))
         return LoopSettingsResult::Stay;
 
     char line0[21], line1[21], line2[21], line3[21];

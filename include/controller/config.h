@@ -62,6 +62,7 @@ enum class StartScreen : uint8_t
 
 // ===== Display / OLED =====
 #define DISPLAY_MIN_FLUSH_INTERVAL_MS 50
+#define DISPLAY_UI_REFRESH_INTERVAL_MS 150
 #define I2C_SCL_PIN HW_I2C_SCL_PIN
 #define I2C_SDA_PIN HW_I2C_SDA_PIN
 #define I2C_CLOCK_HZ HW_I2C_CLOCK_HZ
