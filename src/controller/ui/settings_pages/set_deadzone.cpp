@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "controller/ui/settings_pages/set_deadzone.h"
 #include "controller/ui/menu.h"
+#include "controller/ui/ui_input.h"
 #include "controller/joysticks.h"
 #include "controller/config.h"
 #include "controller/buttons.h"
@@ -38,13 +39,9 @@ static const char *axisName(uint8_t idx)
     }
 }
 
-static bool armUp = false;
-static bool armDown = false;
-static bool armCenter = false;
-
 static void render(bool forceRedraw)
 {
-    char line0[21], line1[21], line2[21], line3[21];
+    char line0[21], line1[21], line2[21], line3[21], footer[21];
     const char *names[4] = {axisName(0), axisName(1), axisName(2), axisName(3)};
 
     auto fmtLine = [&](uint8_t idx, char *dst)
@@ -63,28 +60,24 @@ static void render(bool forceRedraw)
     if (!showSave)
         saveUntilMs = 0;
 
+    snprintf(footer, sizeof(footer), "%s",
+             showSave ? footerSave : "");
+
     uiRenderPage(line0,
                  line1,
                  line2,
                  line3,
                  false,
-                 2, 4,
-                 buttonsLastReleaseDuration(),
+                 2, 5,
                  buttonsLastReleaseKey(),
                  forceRedraw,
-                 showSave ? footerSave : "");
+                 footer);
 }
 
 void setDeadzoneStart()
 {
     oledTick = 0;
-    buttonsConsumeAll();
-    (void)keyReleased(Key::Up);
-    (void)keyReleased(Key::Down);
-    (void)keyReleased(Key::Center);
-    armUp = !keyDown(Key::Up);
-    armDown = !keyDown(Key::Down);
-    armCenter = !keyDown(Key::Center);
+    uiInputReset();
     for (uint8_t i = 0; i < 4; i++)
     {
         currentDz[i] = joysticksGetDeadzoneAxis(i);
@@ -96,35 +89,28 @@ void setDeadzoneStart()
 
 DeadbandResult setDeadzoneLoop()
 {
+    const UiInputActions input = uiInputPoll();
     bool changed = false;
-    // auto-arm after release
-    if (!armUp && !keyDown(Key::Up))
-        armUp = true;
-    if (!armDown && !keyDown(Key::Down))
-        armDown = true;
-    if (!armCenter && !keyDown(Key::Center))
-        armCenter = true;
 
-    // LEFT/RIGHT: short +/-1, long (repeat co 800 ms) +/-5 dla wybranej osi
-    if (keyShortClick(Key::Right))
+    if (input.inc)
     {
         uint8_t idx = (uint8_t)selected;
         currentDz[idx] += 1;
         changed = true;
     }
-    else if (keyShortClick(Key::Left))
+    else if (input.dec)
     {
         uint8_t idx = (uint8_t)selected;
         currentDz[idx] -= 1;
         changed = true;
     }
-    if (keyLongPress(Key::Right, true, 800, 800))
+    else if (input.incFast)
     {
         uint8_t idx = (uint8_t)selected;
         currentDz[idx] += 5;
         changed = true;
     }
-    else if (keyLongPress(Key::Left, true, 800, 800))
+    else if (input.decFast)
     {
         uint8_t idx = (uint8_t)selected;
         currentDz[idx] -= 5;
@@ -140,17 +126,15 @@ DeadbandResult setDeadzoneLoop()
         return DeadbandResult::Stay;
     }
 
-    if (armUp && keyReleased(Key::Up))
+    if (input.selectNext)
     {
-        armUp = false;
         selected = (DzAxis)(((uint8_t)selected + 1) % (uint8_t)DzAxis::Count);
         render(true);
         return DeadbandResult::Stay;
     }
 
-    if (armCenter && keyReleased(Key::Center))
+    if (input.enter)
     {
-        armCenter = false;
         joysticksSaveDeadzone();
         for (uint8_t i = 0; i < 4; i++)
             originalDz[i] = joysticksGetDeadzoneAxis(i);
@@ -159,9 +143,8 @@ DeadbandResult setDeadzoneLoop()
         return DeadbandResult::Stay;
     }
 
-    if (armDown && keyReleased(Key::Down))
+    if (input.back)
     {
-        armDown = false;
         for (uint8_t i = 0; i < 4; i++)
             joysticksSetDeadzoneAxis(i, originalDz[i]);
         return DeadbandResult::ExitToSettings;

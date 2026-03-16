@@ -7,6 +7,8 @@
 #include "controller/ui/settings_pages/calib_joy.h"
 #include "controller/ui/settings_pages/set_deadzone.h"
 #include "controller/ui/settings_pages/set_expo.h"
+#include "controller/ui/settings_pages/led_test.h"
+#include "controller/ui/settings_pages/set_photo.h"
 #include "controller/config.h"
 #include "common/time_utils.h"
 
@@ -16,10 +18,37 @@ enum class UiMode
     Settings,
     JoyCalibration,
     Deadband,
-    Expo
+    Expo,
+    LedTest,
+    PhotoSettings
 };
 
 static UiMode uiMode = UiMode::Main;
+
+static void formatFooterWithPage(char *dst,
+                                 size_t dstSize,
+                                 const char *leftText,
+                                 uint8_t page,
+                                 uint8_t totalPages)
+{
+    if (!dst || dstSize == 0)
+        return;
+
+    char pageBuf[8];
+    snprintf(pageBuf, sizeof(pageBuf), "[%u/%u]", page, totalPages);
+
+    const size_t pageLen = strlen(pageBuf);
+    const size_t width = (dstSize > 0) ? (dstSize - 1) : 0;
+    const size_t leftWidth = (width > pageLen) ? (width - pageLen) : 0;
+
+    char leftBuf[21];
+    snprintf(leftBuf, sizeof(leftBuf), "%s", leftText ? leftText : "");
+    snprintf(dst, dstSize, "%-*.*s%s",
+             (int)leftWidth,
+             (int)leftWidth,
+             leftBuf,
+             pageBuf);
+}
 
 void menuInit()
 {
@@ -89,6 +118,18 @@ bool menuLoop(int mode, uint8_t batState)
             uiMode = UiMode::Expo;
             return true; // block comm during expo page
         }
+        if (r == LoopSettingsResult::StartLedTest)
+        {
+            ledTestStart();
+            uiMode = UiMode::LedTest;
+            return false;
+        }
+        if (r == LoopSettingsResult::StartPhotoSettings)
+        {
+            setPhotoStart();
+            uiMode = UiMode::PhotoSettings;
+            return false;
+        }
         if (r == LoopSettingsResult::ExitToMain)
         {
             uiMode = UiMode::Main;
@@ -138,6 +179,28 @@ bool menuLoop(int mode, uint8_t batState)
         }
         return true;
     }
+
+    case UiMode::LedTest:
+    {
+        LedTestResult lr = ledTestLoop();
+        if (lr == LedTestResult::ExitToSettings)
+        {
+            loopSettingsStart(4);
+            uiMode = UiMode::Settings;
+        }
+        return false;
+    }
+
+    case UiMode::PhotoSettings:
+    {
+        PhotoSettingsResult pr = setPhotoLoop();
+        if (pr == PhotoSettingsResult::ExitToSettings)
+        {
+            loopSettingsStart(5);
+            uiMode = UiMode::Settings;
+        }
+        return false;
+    }
     }
 
     return false;
@@ -150,7 +213,6 @@ void uiRenderPage(const char *line0,
                   bool showFooter,
                   uint8_t page,
                   uint8_t totalPages,
-                  uint32_t lastPressMs,
                   Key lastKey,
                   bool forceRedraw,
                   const char *footerOverride)
@@ -169,47 +231,54 @@ void uiRenderPage(const char *line0,
     if (footerOverride)
     {
         if (footerDue)
+        {
             displayText(4, footerOverride);
+        }
     }
     else if (showFooter)
     {
         if (footerDue)
         {
             char line4[21];
-
-            uint32_t shown = lastPressMs;
-            if (shown > 99999u)
-                shown = 99999u;
-
-            char keyChar = '-';
+            const char *keyLabel = "--";
             switch (lastKey)
             {
             case Key::Left:
-                keyChar = 'L';
+                keyLabel = "L";
                 break;
             case Key::Right:
-                keyChar = 'R';
+                keyLabel = "R";
                 break;
             case Key::Up:
-                keyChar = 'U';
+                keyLabel = "U";
                 break;
             case Key::Down:
-                keyChar = 'D';
+                keyLabel = "D";
                 break;
             case Key::Center:
-                keyChar = 'C';
+                keyLabel = "C";
+                break;
+            case Key::F1:
+                keyLabel = "F1";
+                break;
+            case Key::F2:
+                keyLabel = "F2";
+                break;
+            case Key::JL:
+                keyLabel = "LJ";
+                break;
+            case Key::JR:
+                keyLabel = "RJ";
                 break;
             default:
-                keyChar = '-';
+                keyLabel = "--";
                 break;
             }
 
             if (FOOTER_TIMEKEY_ENABLE)
-                snprintf(line4, sizeof(line4), "%5lu %c        [%u/%u]",
-                         (unsigned long)shown, keyChar, page, totalPages);
+                formatFooterWithPage(line4, sizeof(line4), keyLabel, page, totalPages);
             else
-                snprintf(line4, sizeof(line4), "               [%u/%u]",
-                         page, totalPages);
+                formatFooterWithPage(line4, sizeof(line4), "", page, totalPages);
 
             displayText(4, line4);
         }

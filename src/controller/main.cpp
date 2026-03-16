@@ -98,6 +98,14 @@ void loop()
 
     bool inCalib = menuLoop(mode, batState);
 
+    static uint32_t ledStatusTick = 0;
+    if (everyMs(100, ledStatusTick))
+    {
+        const uint8_t brightnessPct = photoSensorLedBrightnessPct();
+        ledsSet(LedSlot::First, RED, brightnessPct);
+        ledsSet(LedSlot::Second, GREEN, brightnessPct);
+    }
+
     // 2) komunikacja / sterowanie (zawsze, je‘>li nie jeste‘> w kalibracji)
     if (!inCalib)
     {

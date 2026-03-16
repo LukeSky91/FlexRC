@@ -12,7 +12,9 @@ enum class Key : uint8_t
     Down,
     Center,
     F1,
-    F2
+    F2,
+    JL,
+    JR
 };
 
 void buttonsTick(); // updates key state, does not consume events
@@ -55,9 +57,6 @@ bool keyLongPress(Key k,
  * - durationMs optional; pass pointer if you need press time
  */
 bool keyReleased(Key k, uint32_t *durationMs = nullptr, bool consume = true);
-
-// Last measured press duration (ms) at release for any key.
-uint32_t buttonsLastReleaseDuration();
 
 // Last released key.
 Key buttonsLastReleaseKey();

@@ -1,16 +1,18 @@
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
+#include "controller/config.h"
 #include "controller/leds.h"
 
-#define LED_PIN 6
 #define LED_COUNT 3
 
-static Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+static Adafruit_NeoPixel strip(LED_COUNT, LED_RGB_PIN, NEO_GRB + NEO_KHZ800);
 
 // Throttle show to avoid RX/UI stutter
 static const uint32_t MIN_SHOW_INTERVAL_MS = 20; // 50 Hz (set to 30 for ~33 Hz)
 static uint32_t lastShowMs = 0;
 static bool dirty = false;
+static bool manualOverrideActive = false;
+static bool internalWrite = false;
 
 static uint8_t slotIndex(LedSlot slot)
 {
@@ -32,16 +34,20 @@ static uint8_t applyBrightness(uint8_t value, uint8_t brightnessPct)
     return (uint8_t)((value * pct) / 100);
 }
 
-void ledsInit()
+static uint32_t encodeColorForSlot(LedSlot slot, const Color &scaled)
 {
-    strip.begin();
-    strip.clear();
-    strip.show();
-    lastShowMs = millis();
-    dirty = false;
+    switch (slot)
+    {
+    case LedSlot::First:
+    case LedSlot::Second:
+        return strip.Color(scaled.g, scaled.r, scaled.b);
+    case LedSlot::Third:
+    default:
+        return strip.Color(scaled.r, scaled.g, scaled.b);
+    }
 }
 
-void ledsSet(LedSlot slot, Color c, uint8_t brightnessPct)
+static void setPixel(LedSlot slot, Color c, uint8_t brightnessPct)
 {
     Color scaled{
         applyBrightness(c.r, brightnessPct),
@@ -49,10 +55,8 @@ void ledsSet(LedSlot slot, Color c, uint8_t brightnessPct)
         applyBrightness(c.b, brightnessPct)};
 
     uint8_t idx = slotIndex(slot);
-    uint32_t newColor = strip.Color(scaled.g, scaled.r, scaled.b);
+    uint32_t newColor = encodeColorForSlot(slot, scaled);
 
-    // Do not mark dirty if the color is unchanged (fewer show() calls)
-    // (getPixelColor is available in Adafruit_NeoPixel)
     if (strip.getPixelColor(idx) == newColor)
     {
         return;
@@ -60,6 +64,26 @@ void ledsSet(LedSlot slot, Color c, uint8_t brightnessPct)
 
     strip.setPixelColor(idx, newColor);
     dirty = true;
+}
+
+void ledsInit()
+{
+    strip.begin();
+    strip.clear();
+    strip.show();
+    lastShowMs = millis();
+    dirty = false;
+    manualOverrideActive = false;
+    internalWrite = false;
+}
+
+void ledsSet(LedSlot slot, Color c, uint8_t brightnessPct)
+{
+    if (manualOverrideActive && !internalWrite)
+    {
+        return;
+    }
+    setPixel(slot, c, brightnessPct);
 }
 
 void ledsShow()
@@ -83,4 +107,33 @@ void ledsAllOff()
     strip.clear();
     dirty = true;
     ledsShow(); // respects throttle
+}
+
+void ledsManualOverrideBegin()
+{
+    manualOverrideActive = true;
+}
+
+void ledsManualOverrideSet(LedSlot slot, Color c, uint8_t brightnessPct)
+{
+    manualOverrideActive = true;
+    internalWrite = true;
+    setPixel(slot, c, brightnessPct);
+    internalWrite = false;
+}
+
+void ledsManualOverrideShow()
+{
+    manualOverrideActive = true;
+    ledsShow();
+}
+
+void ledsManualOverrideEnd()
+{
+    internalWrite = true;
+    strip.clear();
+    dirty = true;
+    manualOverrideActive = false;
+    ledsShow();
+    internalWrite = false;
 }

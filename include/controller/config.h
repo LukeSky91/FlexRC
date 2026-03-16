@@ -7,7 +7,7 @@
 // Debug/logging: 1 enables Serial logs, 0 disables.
 #define PERF_DEBUG 0
 
-// Footer with time/key on main screens: 1 enables, 0 disables.
+// Footer with last key/page indicator: 1 enables, 0 disables.
 #define FOOTER_TIMEKEY_ENABLE 1
 
 // ===== Startup screen =====

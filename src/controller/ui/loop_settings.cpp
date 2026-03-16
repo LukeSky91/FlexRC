@@ -6,9 +6,9 @@
 #include "common/time_utils.h"
 
 static uint32_t oledTick = 0;
-// 1=CALIB JOYS, 2=JOYS DEADZONE, 3=JOYS EXPO
+// 1=CALIB JOYS, 2=JOYS DEADZONE, 3=JOYS EXPO, 4=LED TEST, 5=PHOTO
 static uint8_t page = 1;
-static const uint8_t totalPages = 3;
+static const uint8_t totalPages = 5;
 static bool initDone = false;
 static uint8_t prevPage = 1;
 static bool centerArmed = false;
@@ -98,6 +98,14 @@ LoopSettingsResult loopSettingsLoop(int mode, uint8_t batState)
         {
             return LoopSettingsResult::StartExpo;
         }
+        else if (page == 4)
+        {
+            return LoopSettingsResult::StartLedTest;
+        }
+        else if (page == 5)
+        {
+            return LoopSettingsResult::StartPhotoSettings;
+        }
     }
 
     // UI limiter: max 10 Hz (100 ms), unless pageChanged
@@ -129,8 +137,20 @@ LoopSettingsResult loopSettingsLoop(int mode, uint8_t batState)
         line2[0] = '\0';
         break;
     }
+
+    case 4:
+        snprintf(line0, sizeof(line0), "      LED");
+        snprintf(line1, sizeof(line1), "      TEST");
+        line2[0] = '\0';
+        break;
+
+    case 5:
+        snprintf(line0, sizeof(line0), "     PHOTO");
+        snprintf(line1, sizeof(line1), "    SETTINGS");
+        line2[0] = '\0';
+        break;
     }
 
-    uiRenderPage(line0, line1, line2, line3, true, page, totalPages, buttonsLastReleaseDuration(), buttonsLastReleaseKey(), pageChanged, footerOverride);
+    uiRenderPage(line0, line1, line2, line3, true, page, totalPages, buttonsLastReleaseKey(), pageChanged, footerOverride);
     return LoopSettingsResult::Stay;
 }

@@ -5,7 +5,7 @@
 
 static const unsigned long debounceMs = 30;
 static const bool BUTTONS_MONITOR = (PERF_DEBUG != 0);
-static const uint8_t KEY_SLOT_COUNT = (uint8_t)Key::F2 + 1;
+static const uint8_t KEY_SLOT_COUNT = (uint8_t)Key::JR + 1;
 
 static int TH_DOWN = TH_DOWN_DEFAULT;
 static int TH_UP = TH_UP_DEFAULT;
@@ -48,7 +48,6 @@ struct Engine
 };
 
 static Engine eng;
-static uint32_t lastReleaseDurationMs = 0;
 static Key lastReleaseKey = Key::None;
 
 static inline bool isPhysicalPressed(uint8_t pin)
@@ -83,6 +82,8 @@ static const char *keyName(Key k)
     case Key::Center: return "CENTER";
     case Key::F1: return "F1";
     case Key::F2: return "F2";
+    case Key::JL: return "LJ";
+    case Key::JR: return "RJ";
     default: return "NONE";
     }
 }
@@ -128,6 +129,14 @@ static Key selectFirstPressed(Key preferred)
         if (isPhysicalPressed(BUTTON_F2_PIN))
             return preferred;
         break;
+    case Key::JL:
+        if (isPhysicalPressed(JOY_L_PIN_BTN))
+            return preferred;
+        break;
+    case Key::JR:
+        if (isPhysicalPressed(JOY_R_PIN_BTN))
+            return preferred;
+        break;
     default:
         break;
     }
@@ -146,6 +155,10 @@ static Key selectFirstPressed(Key preferred)
         return Key::F1;
     if (isPhysicalPressed(BUTTON_F2_PIN))
         return Key::F2;
+    if (isPhysicalPressed(JOY_L_PIN_BTN))
+        return Key::JL;
+    if (isPhysicalPressed(JOY_R_PIN_BTN))
+        return Key::JR;
     return Key::None;
 }
 
@@ -196,7 +209,6 @@ static void buttonsUpdate()
                 eng.shortPending[ip] = true;
         }
 
-        lastReleaseDurationMs = dur;
         lastReleaseKey = prev;
 
         if (BUTTONS_MONITOR)
@@ -235,6 +247,8 @@ void buttonsInit()
     pinMode(BUTTON_CENTER_PIN, INPUT_PULLUP);
     pinMode(BUTTON_F1_PIN, INPUT_PULLUP);
     pinMode(BUTTON_F2_PIN, INPUT_PULLUP);
+    pinMode(JOY_L_PIN_BTN, INPUT_PULLUP);
+    pinMode(JOY_R_PIN_BTN, INPUT_PULLUP);
 
     eng = Engine{};
     clampThresholds();
@@ -283,11 +297,6 @@ bool keyReleased(Key k, uint32_t *durationMs, bool consume)
         eng.shortPending[i] = false;
     }
     return true;
-}
-
-uint32_t buttonsLastReleaseDuration()
-{
-    return lastReleaseDurationMs;
 }
 
 Key buttonsLastReleaseKey()
@@ -360,8 +369,6 @@ void buttonsConsumeAll()
     eng = Engine{};
     eng.stable = current;
     eng.lastReading = current;
-    lastReleaseDurationMs = 0;
-    lastReleaseKey = Key::None;
 }
 
 bool keyShortClick(Key k, uint32_t thresholdMs, bool consume)

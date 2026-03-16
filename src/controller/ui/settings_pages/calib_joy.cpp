@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "controller/ui/settings_pages/calib_joy.h"
+#include "controller/ui/ui_input.h"
 #include "controller/display.h"
 #include "controller/buttons.h"
 #include "controller/joysticks.h"
@@ -44,11 +45,6 @@ static bool savedAny = false;
 static int lastCtrX = 0;
 static int lastCtrY = 0;
 static uint32_t saveUntilMs = 0;
-static bool armDown = false;
-static bool armLeft = false;
-static bool armRight = false;
-static bool armUp = false;
-static bool armCenter = false;
 
 static void render(bool forceRedraw);
 static void snapshotStored()
@@ -106,17 +102,7 @@ static void setPage(CalPage p)
     {
         startExtentsIfNeeded();
     }
-    // flush any stale releases after page switch
-    (void)keyReleased(Key::Down);
-    (void)keyReleased(Key::Left);
-    (void)keyReleased(Key::Right);
-    (void)keyReleased(Key::Up);
-    (void)keyReleased(Key::Center);
-    armDown = !keyDown(Key::Down);
-    armLeft = !keyDown(Key::Left);
-    armRight = !keyDown(Key::Right);
-    armUp = !keyDown(Key::Up);
-    armCenter = !keyDown(Key::Center);
+    uiInputReset();
     render(true);
 }
 
@@ -172,9 +158,11 @@ static void render(bool forceRedraw)
         saveUntilMs = 0;
 
     if (showSave)
-        snprintf(line4, sizeof(line4), " %c     SAVE    [%u/%u]", stickChar, pageIdx, totalPages);
+        snprintf(line4, sizeof(line4), "%-15.15s[%u/%u]",
+                 (String(" ") + stickChar + "     SAVE").c_str(), pageIdx, totalPages);
     else
-        snprintf(line4, sizeof(line4), " %c             [%u/%u]", stickChar, pageIdx, totalPages);
+        snprintf(line4, sizeof(line4), "%-15.15s[%u/%u]",
+                 (String(" ") + stickChar).c_str(), pageIdx, totalPages);
 
     displayText(0, line0);
     displayText(1, line1);
@@ -188,17 +176,7 @@ void calibJoyStart()
 {
     calibTick = 0;
     calibTickCenter = 0;
-    buttonsConsumeAll();
-    (void)keyReleased(Key::Down);
-    (void)keyReleased(Key::Left);
-    (void)keyReleased(Key::Right);
-    (void)keyReleased(Key::Up);
-    (void)keyReleased(Key::Center);
-    armDown = !keyDown(Key::Down);
-    armLeft = !keyDown(Key::Left);
-    armRight = !keyDown(Key::Right);
-    armUp = !keyDown(Key::Up);
-    armCenter = !keyDown(Key::Center);
+    uiInputReset();
     curStick = CalStick::Left;
     curSel = CalSel::Extents;
     curPage = CalPage::LeftLive;
@@ -219,44 +197,32 @@ void calibJoyStart()
 
 CalibrationResult calibJoyLoop()
 {
+    const UiInputActions input = uiInputPoll();
     const bool storedView = isStoredPage();
 
     if (!storedView)
         startExtentsIfNeeded();
-
-    // auto-arm after release
-    if (!armDown && !keyDown(Key::Down))
-        armDown = true;
-    if (!armLeft && !keyDown(Key::Left))
-        armLeft = true;
-    if (!armRight && !keyDown(Key::Right))
-        armRight = true;
-    if (!armUp && !keyDown(Key::Up))
-        armUp = true;
-    if (!armCenter && !keyDown(Key::Center))
-        armCenter = true;
 
     if (!storedView && curSel == CalSel::Extents)
     {
         stickRef(curStick).updateCalibrationSample();
     }
 
-    // DOWN: exit; if nothing was saved, restore original
-    if (armDown && keyReleased(Key::Down))
+    if (input.back)
     {
         if (!savedAny)
             restoreOriginal();
         return CalibrationResult::ExitToMain;
     }
 
-    if (armLeft && keyReleased(Key::Left))
+    if (input.pagePrev)
     {
         uint8_t p = static_cast<uint8_t>(curPage);
         p = (p == 0) ? 3 : (p - 1);
         setPage(static_cast<CalPage>(p));
         return CalibrationResult::Running;
     }
-    if (armRight && keyReleased(Key::Right))
+    if (input.pageNext)
     {
         uint8_t p = static_cast<uint8_t>(curPage);
         p = (uint8_t)((p + 1) % 4);
@@ -264,7 +230,7 @@ CalibrationResult calibJoyLoop()
         return CalibrationResult::Running;
     }
 
-    if (!storedView && armUp && keyReleased(Key::Up))
+    if (!storedView && input.selectNext)
     {
         curSel = (curSel == CalSel::Extents) ? CalSel::Center : CalSel::Extents;
         startExtentsIfNeeded();
@@ -272,7 +238,7 @@ CalibrationResult calibJoyLoop()
         return CalibrationResult::Running;
     }
 
-    if (!storedView && armCenter && keyReleased(Key::Center))
+    if (!storedView && input.enter)
     {
         Joystick &j = stickRef(curStick);
         if (curSel == CalSel::Extents)

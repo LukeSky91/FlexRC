@@ -7,6 +7,8 @@ enum class LoopSettingsResult
     StartCalibration,
     StartDeadband,
     StartExpo,
+    StartLedTest,
+    StartPhotoSettings,
     ExitToMain
 };
 

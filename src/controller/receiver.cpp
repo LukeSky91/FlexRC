@@ -3,6 +3,7 @@
 #include "common/comm.h"
 #include "controller/receiver.h"
 #include "controller/leds.h"
+#include "controller/photo_sensor.h"
 
 // ==================== Debug ====================
 #define AUX_DEBUG 1 // 1 = print debug to Serial (USB), 0 = off
@@ -36,8 +37,6 @@ static uint16_t s0 = 0, s1 = 0, s2 = 0;
 static bool samplesInit = false;
 
 // LED global brightness (percent, after RGB computed)
-static const uint8_t LED_BRIGHT_PCT = 15; // 10–20% nie razi
-
 // Map 0..100% -> hue (blue..red). 0=>blue(160), 100=>red(0)
 // Zmień kolejność jeśli chcesz red->blue: map(..., 0,100,0,160)
 static inline uint16_t pctToHue(uint16_t pct)
@@ -156,7 +155,7 @@ static void updateLed()
     uint8_t t = (uint8_t)map(auxSmooth, 0, 100, 0, 255);
     Color c{0, t, 255}; // R increases, B stays max, G stays 0
 
-    ledsSet(LedSlot::Third, c, LED_BRIGHT_PCT);
+    ledsSet(LedSlot::Third, c, photoSensorLedBrightnessPct());
 }
 
 void receiverInit()

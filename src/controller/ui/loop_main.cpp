@@ -108,14 +108,6 @@ void screenMainLoop(int mode, uint8_t batState)
         settingsRequested = true;
     }
 
-    // LEDs: throttle show() calls
-    static uint32_t ledTick = 0;
-    if (everyMs(100, ledTick))
-    {
-        ledsSet(LedSlot::First, RED);
-        ledsSet(LedSlot::Second, GREEN);
-    }
-
     // UI: refresh at ~6.7 Hz (150ms), but immediately if page changed
     if (!pageChanged && !everyMs(DISPLAY_UI_REFRESH_INTERVAL_MS, oledTick))
         return;
@@ -208,7 +200,6 @@ void screenMainLoop(int mode, uint8_t batState)
                  true, // show footer with time/key when enabled
                  page,
                  totalPages,
-                 buttonsLastReleaseDuration(),
                  buttonsLastReleaseKey(),
                  pageChanged,
                  nullptr);

@@ -24,3 +24,7 @@ void ledsInit();
 void ledsSet(LedSlot slot, Color c, uint8_t brightnessPct = 50);
 void ledsShow();
 void ledsAllOff();
+void ledsManualOverrideBegin();
+void ledsManualOverrideSet(LedSlot slot, Color c, uint8_t brightnessPct = 50);
+void ledsManualOverrideShow();
+void ledsManualOverrideEnd();

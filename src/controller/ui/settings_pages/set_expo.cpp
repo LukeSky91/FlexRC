@@ -4,6 +4,7 @@
 
 #include "controller/ui/settings_pages/set_expo.h"
 #include "controller/ui/menu.h"
+#include "controller/ui/ui_input.h"
 #include "controller/joysticks.h"
 #include "controller/buttons.h"
 #include "common/time_utils.h"
@@ -14,19 +15,16 @@ static uint32_t oledTick = 0;
 
 static float currentExpo[4] = {0};
 static float originalExpo[4] = {0};
+static int currentDeadzone[4] = {0};
+static int originalDeadzone[4] = {0};
 
 static const uint8_t kMarkerCount = 11; // 11 markers = 10 segments
-static bool armUp = false;
-static bool armDown = false;
-static bool armLeft = false;
-static bool armRight = false;
-static bool armCenter = false;
 
 enum class ExpoItem : uint8_t
 {
     Expo = 0,
-    View,   // N/O
-    Switch, // change axis
+    Deadzone,
+    View,
     Count
 };
 
@@ -51,29 +49,6 @@ static uint8_t yCache[128];
 
 static void render(bool forceRedraw);
 static void applyCurrentToHardware();
-static void flushAndRearm()
-{
-    // 1) consume pending releases
-    (void)keyReleased(Key::Up);
-    (void)keyReleased(Key::Down);
-    (void)keyReleased(Key::Left);
-    (void)keyReleased(Key::Right);
-    (void)keyReleased(Key::Center);
-
-    // 2) consume pending short-clicks (IMPORTANT)
-    (void)keyShortClick(Key::Up, 5000, true);
-    (void)keyShortClick(Key::Down, 5000, true);
-    (void)keyShortClick(Key::Left, 5000, true);
-    (void)keyShortClick(Key::Right, 5000, true);
-    (void)keyShortClick(Key::Center, 5000, true);
-
-    // 3) re-arm
-    armUp = !keyDown(Key::Up);
-    armDown = !keyDown(Key::Down);
-    armLeft = !keyDown(Key::Left);
-    armRight = !keyDown(Key::Right);
-    armCenter = !keyDown(Key::Center);
-}
 
 static float clampExpoLocal(float e)
 {
@@ -119,7 +94,7 @@ static void overlayExpo(U8G2 &oled, void *)
         return curved * 100.0f;
     };
 
-    float dzNorm = (float)joysticksGetDeadzoneAxis(axisIdx) / (float)ADC_CENTER;
+    float dzNorm = (float)currentDeadzone[axisIdx] / (float)ADC_CENTER;
     dzNorm = constrain(dzNorm, 0.0f, 0.999f);
 
     auto yFromPct = [&](float pct) -> int
@@ -135,6 +110,9 @@ static void overlayExpo(U8G2 &oled, void *)
     };
 
     const float expoShown = (viewMode == ViewMode::New) ? currentExpo[axisIdx] : originalExpo[axisIdx];
+    const float dzShown = (viewMode == ViewMode::New) ? (float)currentDeadzone[axisIdx] : (float)originalDeadzone[axisIdx];
+    dzNorm = dzShown / (float)ADC_CENTER;
+    dzNorm = constrain(dzNorm, 0.0f, 0.999f);
 
     const float EXPO_EPS = 0.0005f;
     const float DZ_EPS = 0.0005f;
@@ -189,14 +167,20 @@ static void overlayExpo(U8G2 &oled, void *)
     oled.setDrawColor(1);
 
     char buf[28];
-    const char markNew = (selected == ExpoItem::Expo) ? '>' : ' ';
+    const char markExpo = (selected == ExpoItem::Expo) ? '>' : ' ';
+    const char markDz = (selected == ExpoItem::Deadzone) ? '>' : ' ';
 
     int cur100 = (int)(currentExpo[axisIdx] * 100.0f + 0.5f);
-    snprintf(buf, sizeof(buf), "%cexN:%d.%02d      ", markNew, cur100 / 100, cur100 % 100);
+    int orig100 = (int)(originalExpo[axisIdx] * 100.0f + 0.5f);
+    snprintf(buf, sizeof(buf), "%cex: %1d.%02d/%1d.%02d ",
+             markExpo,
+             cur100 / 100,
+             cur100 % 100,
+             orig100 / 100,
+             orig100 % 100);
     oled.drawStr(0, 10, buf);
 
-    int orig100 = (int)(originalExpo[axisIdx] * 100.0f + 0.5f);
-    snprintf(buf, sizeof(buf), " ex :%d.%02d       ", orig100 / 100, orig100 % 100);
+    snprintf(buf, sizeof(buf), "%cdzn:%4d/%-4d", markDz, currentDeadzone[axisIdx], originalDeadzone[axisIdx]);
     oled.drawStr(0, 22, buf);
 
     oled.setFontMode(1); // restore transparent mode (optional)
@@ -207,7 +191,6 @@ static void render(bool forceRedraw)
     char line4[21];
 
     const char selView = (selected == ExpoItem::View) ? '>' : ' ';
-    const char selSwitch = (selected == ExpoItem::Switch) ? '>' : ' ';
     const char viewChar = (viewMode == ViewMode::New) ? 'N' : 'O';
     const uint8_t pageIdx = axisIdx + 1;
     const bool showSave = millis() < saveUntilMs;
@@ -219,13 +202,13 @@ static void render(bool forceRedraw)
 
     if (showSave)
     {
-        snprintf(line4, sizeof(line4), "%s %c%c %cP SAVE [%u/4]",
-                 axisLabel(axisIdx), selView, viewChar, selSwitch, pageIdx);
+        snprintf(line4, sizeof(line4), "%-15.15s[%u/4]",
+                 (String(axisLabel(axisIdx)) + " " + selView + viewChar + " SAVE").c_str(), pageIdx);
     }
     else
     {
-        snprintf(line4, sizeof(line4), "%s %c%c %cP      [%u/4]",
-                 axisLabel(axisIdx), selView, viewChar, selSwitch, pageIdx);
+        snprintf(line4, sizeof(line4), "%-15.15s[%u/4]",
+                 (String(axisLabel(axisIdx)) + " " + selView + viewChar).c_str(), pageIdx);
     }
 
     displayText(4, line4);
@@ -238,20 +221,22 @@ static void applyCurrentToHardware()
     {
         joysticksSetExpoAxis(i, clampExpoLocal(currentExpo[i]));
         currentExpo[i] = joysticksGetExpoAxis(i);
+        joysticksSetDeadzoneAxis(i, currentDeadzone[i]);
+        currentDeadzone[i] = joysticksGetDeadzoneAxis(i);
     }
 }
 
 void setExpoStart()
 {
     oledTick = 0;
-    buttonsConsumeAll();
-
-    flushAndRearm();
+    uiInputReset();
 
     for (uint8_t i = 0; i < 4; ++i)
     {
         originalExpo[i] = joysticksGetExpoAxis(i);
         currentExpo[i] = originalExpo[i];
+        originalDeadzone[i] = joysticksGetDeadzoneAxis(i);
+        currentDeadzone[i] = originalDeadzone[i];
     }
 
     // reset cache so first render always recomputes
@@ -272,132 +257,116 @@ void setExpoStart()
 
 ExpoResult setExpoLoop()
 {
+    const UiInputActions input = uiInputPoll();
     bool changed = false;
-    bool viewChanged = false;
     bool axisChanged = false;
-    // Consume releases upfront so no stale events carry over between selections
-    bool centerReleased = keyReleased(Key::Center);
-    bool upReleased = keyReleased(Key::Up);
-    bool downReleased = keyReleased(Key::Down);
-    // auto-arm after release
-    if (!armUp && !keyDown(Key::Up))
-        armUp = true;
-    if (!armDown && !keyDown(Key::Down))
-        armDown = true;
-    if (!armLeft && !keyDown(Key::Left))
-        armLeft = true;
-    if (!armRight && !keyDown(Key::Right))
-        armRight = true;
-    if (!armCenter && !keyDown(Key::Center))
-        armCenter = true;
 
-    // Up: change selection
-    if (armUp && upReleased)
+    if (input.selectNext)
     {
-        armUp = false;
         selected = (ExpoItem)(((uint8_t)selected + 1) % (uint8_t)ExpoItem::Count);
-        saveUntilMs = 0; // moving cursor cancels SAVE indicator
-        flushAndRearm();
+        saveUntilMs = 0;
         render(true);
         return ExpoResult::Stay;
     }
 
-    // Switch: change axis
-    if (selected == ExpoItem::Switch)
+    if (input.pagePrev)
     {
-        bool leftReleased = keyReleased(Key::Left);
-        bool rightReleased = keyReleased(Key::Right);
-        if (armLeft && leftReleased)
-        {
-            armLeft = false;
-            axisIdx = (axisIdx == 0) ? 3 : (axisIdx - 1);
-            axisChanged = true;
-            saveUntilMs = 0;
-        }
-        if (armRight && rightReleased)
-        {
-            armRight = false;
-            axisIdx = (uint8_t)((axisIdx + 1) % 4);
-            axisChanged = true;
-            saveUntilMs = 0;
-        }
+        axisIdx = (axisIdx == 0) ? 3 : (axisIdx - 1);
+        axisChanged = true;
+        saveUntilMs = 0;
+    }
+    if (input.pageNext)
+    {
+        axisIdx = (uint8_t)((axisIdx + 1) % 4);
+        axisChanged = true;
+        saveUntilMs = 0;
     }
 
-    if (selected == ExpoItem::Expo && armRight && keyShortClick(Key::Right))
+    if (selected == ExpoItem::Expo && input.inc)
     {
-        armRight = false;
         currentExpo[axisIdx] += 0.01f;
         changed = true;
     }
-    else if (selected == ExpoItem::Expo && armLeft && keyShortClick(Key::Left))
+    else if (selected == ExpoItem::Expo && input.dec)
     {
-        armLeft = false;
         currentExpo[axisIdx] -= 0.01f;
         changed = true;
     }
 
-    if (selected == ExpoItem::Expo && keyLongPress(Key::Right, true, 800, 800))
+    if (selected == ExpoItem::Expo && input.incFast)
     {
         currentExpo[axisIdx] += 0.05f;
         changed = true;
     }
-    else if (selected == ExpoItem::Expo && keyLongPress(Key::Left, true, 800, 800))
+    else if (selected == ExpoItem::Expo && input.decFast)
     {
         currentExpo[axisIdx] -= 0.05f;
         changed = true;
     }
 
-    // Toggle view N/O
-    if (selected == ExpoItem::View)
+    if (selected == ExpoItem::Deadzone && input.inc)
     {
-        bool leftReleased = keyReleased(Key::Left);
-        bool rightReleased = keyReleased(Key::Right);
-        if ((armRight && rightReleased) || (armLeft && leftReleased))
-        {
-            if (rightReleased)
-                armRight = false;
-            if (leftReleased)
-                armLeft = false;
-            viewMode = (viewMode == ViewMode::New) ? ViewMode::Old : ViewMode::New;
-            viewChanged = true;
-            saveUntilMs = 0;
-        }
+        currentDeadzone[axisIdx] += 1;
+        changed = true;
+    }
+    else if (selected == ExpoItem::Deadzone && input.dec)
+    {
+        currentDeadzone[axisIdx] -= 1;
+        changed = true;
+    }
+    else if (selected == ExpoItem::Deadzone && input.incFast)
+    {
+        currentDeadzone[axisIdx] += 5;
+        changed = true;
+    }
+    else if (selected == ExpoItem::Deadzone && input.decFast)
+    {
+        currentDeadzone[axisIdx] -= 5;
+        changed = true;
+    }
+
+    if (selected == ExpoItem::View && (input.inc || input.dec || input.incFast || input.decFast))
+    {
+        viewMode = (viewMode == ViewMode::New) ? ViewMode::Old : ViewMode::New;
+        render(true);
+        return ExpoResult::Stay;
     }
 
     if (changed)
     {
         currentExpo[axisIdx] = clampExpoLocal(currentExpo[axisIdx]);
-        viewMode = ViewMode::New;
         applyCurrentToHardware();
         render(true);
         return ExpoResult::Stay;
     }
 
-    if (viewChanged || axisChanged)
+    if (axisChanged)
     {
-        flushAndRearm();
         render(true);
         return ExpoResult::Stay;
     }
 
-    // Save only current axis when cursor is on Expo; stay on screen
-    if (selected == ExpoItem::Expo && armCenter && centerReleased)
+    if (input.enter)
     {
-        armCenter = false;
         applyCurrentToHardware();
         joysticksSaveExpoAxis(axisIdx);
+        joysticksSaveDeadzone();
         originalExpo[axisIdx] = currentExpo[axisIdx];
+        originalDeadzone[axisIdx] = currentDeadzone[axisIdx];
+        viewMode = ViewMode::New;
         saveUntilMs = millis() + 1200;
         render(true);
         return ExpoResult::Stay;
     }
 
     // Back without saving: restore values from entry
-    if (armDown && downReleased)
+    if (input.back)
     {
-        armDown = false;
         for (uint8_t i = 0; i < 4; ++i)
+        {
             joysticksSetExpoAxis(i, originalExpo[i]);
+            joysticksSetDeadzoneAxis(i, originalDeadzone[i]);
+        }
         displaySetOverlay(nullptr, nullptr);
         return ExpoResult::ExitToSettings;
     }
