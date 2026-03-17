@@ -70,7 +70,7 @@ void render(bool forceRedraw)
                  5,
                  buttonsLastReleaseKey(),
                  forceRedraw,
-                 "");
+                 nullptr);
 }
 } // namespace
 

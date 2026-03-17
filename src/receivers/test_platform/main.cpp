@@ -10,6 +10,36 @@ static bool radioReady = false;
 static uint32_t lastRxAt = 0;
 static uint32_t rxCount = 0;
 static uint32_t lastDiag = 0;
+static uint16_t lastBatteryMv = 0;
+static uint8_t lastBatteryPct = 0;
+
+static uint8_t batteryPctFromMv(uint32_t mv)
+{
+    if (mv <= BATTERY_CELL_EMPTY_MV)
+        return 0;
+    if (mv >= BATTERY_CELL_FULL_MV)
+        return 100;
+
+    const uint32_t span = (uint32_t)BATTERY_CELL_FULL_MV - (uint32_t)BATTERY_CELL_EMPTY_MV;
+    return (uint8_t)(((mv - BATTERY_CELL_EMPTY_MV) * 100UL + (span / 2UL)) / span);
+}
+
+static uint16_t readBatteryMv()
+{
+    uint32_t rawSum = 0;
+    for (uint8_t i = 0; i < BATTERY_AVG_SAMPLES; ++i)
+    {
+        rawSum += (uint32_t)analogRead(BATTERY_PIN);
+    }
+
+    const uint32_t raw = rawSum / BATTERY_AVG_SAMPLES;
+    const uint32_t adcMv = (raw * BATTERY_ADC_REF_MV + 511UL) / 1023UL;
+    const uint32_t battMv =
+        (adcMv * (BATTERY_DIVIDER_R_TOP_OHM + BATTERY_DIVIDER_R_BOTTOM_OHM) + (BATTERY_DIVIDER_R_BOTTOM_OHM / 2UL)) /
+        BATTERY_DIVIDER_R_BOTTOM_OHM;
+
+    return (battMv > 0xFFFFUL) ? 0xFFFFU : (uint16_t)battMv;
+}
 
 void setup()
 {
@@ -26,7 +56,7 @@ void setup()
     }
 #endif
 #endif
-    pinMode(AUX_PIN, INPUT);
+    pinMode(BATTERY_PIN, INPUT);
 
 #if SERIAL_ENABLED
     Serial.println("Receiver (Nano) start");
@@ -57,10 +87,17 @@ void loop()
     }
 #endif
 
-    // Send AUX (pot/battery) to transmitter
+    static uint32_t lastBatteryRead = 0;
+    if (millis() - lastBatteryRead >= BATTERY_READ_INTERVAL_MS)
+    {
+        lastBatteryRead = millis();
+        lastBatteryMv = readBatteryMv();
+        lastBatteryPct = batteryPctFromMv(lastBatteryMv);
+    }
+
+    // Send battery telemetry to transmitter
     CommFrame tx{};
-    uint16_t rawAux = (uint16_t)analogRead(AUX_PIN);
-    tx.aux = (uint8_t)((rawAux * 100UL + 511) / 1023);
+    tx.battPct = lastBatteryPct;
 
 // Receive control frame
 #if NRF_ENABLED
@@ -90,8 +127,9 @@ void loop()
         Serial.print(lastRx.rx);
         Serial.print(" | RY: ");
         Serial.print(lastRx.ry);
-        Serial.print(" | AUX OUT: ");
-        Serial.print(tx.aux);
+        Serial.print(" | BATT: ");
+        Serial.print(tx.battPct);
+        Serial.print("%");
         Serial.println();
 #endif
     }

@@ -15,14 +15,12 @@
 // StartScreen::DirectMain      -> skip splash, start on loop_main page 1
 // StartScreen::DirectSetExpo   -> jump directly to EXPO screen (useful for tests)
 // StartScreen::DirectCalibJoy  -> start in joystick calibration screen
-// StartScreen::DirectDeadzone  -> start in deadzone screen
 enum class StartScreen : uint8_t
 {
     DefaultSplash = 0,
     DirectMain,
     DirectSetExpo,
-    DirectCalibJoy,
-    DirectDeadzone
+    DirectCalibJoy
 };
 
 // Set startup screen (default: splash + loop_main page 1)
@@ -50,15 +48,6 @@ enum class StartScreen : uint8_t
 // ===== Joysticks =====
 #define JOY_DEADZONE_DEFAULT 160
 #define JOY_EXPO_DEFAULT 1.8f
-
-// ===== Legacy keyboard thresholds =====
-// Kept temporarily for the migration period. Digital button handling
-// will replace this in a later step.
-#define TH_DOWN_DEFAULT 550
-#define TH_UP_DEFAULT 625
-#define TH_RIGHT_DEFAULT 700
-#define TH_CENTER_DEFAULT 800
-#define TH_LEFT_DEFAULT 875
 
 // ===== Display / OLED =====
 #define DISPLAY_MIN_FLUSH_INTERVAL_MS 50
@@ -90,3 +79,12 @@ enum class StartScreen : uint8_t
 // ===== EEPROM =====
 // Set to 1 to force writing defaults to EEPROM on boot (use once, then set back to 0).
 #define EEPROM_FORCE_DEFAULTS_ON_BOOT 0
+
+// ===== Local battery measurement =====
+// Divider is: battery -> R_TOP -> ADC -> R_BOTTOM -> GND
+#define BATTERY_READ_INTERVAL_MS 200
+#define BATTERY_AVG_SAMPLES 8
+#define BATTERY_DIVIDER_R_TOP_OHM 33000UL
+#define BATTERY_DIVIDER_R_BOTTOM_OHM 20100UL
+#define BATTERY_CELL_EMPTY_MV 6600U
+#define BATTERY_CELL_FULL_MV 8400U

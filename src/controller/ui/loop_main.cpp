@@ -5,13 +5,14 @@
 #include "controller/photo_sensor.h"
 #include "controller/leds.h"
 #include "controller/receiver.h"
+#include "controller/battery.h"
 #include "controller/buttons.h"
 #include "controller/ui/menu.h"
 #include "controller/config.h"
 
 static uint32_t oledTick = 0;
-static uint8_t page = 1; // 1=JOYS PCT, 2=L, 3=R, 4=AUX, 5=PHOTO, 6=SETTINGS
-static const uint8_t totalPages = 6;
+static uint8_t page = 1; // 1=MAIN, 2=L, 3=R, 4=PHOTO, 5=SETTINGS
+static const uint8_t totalPages = 5;
 static bool splashInit = false;
 static bool splashActive = true;
 static uint32_t splashUntilMs = 0;
@@ -43,6 +44,9 @@ void screenMainSetStartPage(uint8_t startPage, bool skipSplash)
 
 void screenMainLoop(int mode, uint8_t batState)
 {
+    (void)mode;
+    (void)batState;
+
     bool pageChanged = false;
 
     if (!splashInit)
@@ -113,6 +117,7 @@ void screenMainLoop(int mode, uint8_t batState)
         return;
 
     char line0[21], line1[21], line2[21], line3[21];
+    const char *footerLeftText = nullptr;
     line0[0] = line1[0] = line2[0] = line3[0] = '\0';
 
     if (splashActive)
@@ -125,59 +130,51 @@ void screenMainLoop(int mode, uint8_t batState)
         switch (page)
         {
         case 1:
-            snprintf(line0, sizeof(line0), "LX%+5d     RX%+5d", displayPct(joyL.readX()), displayPct(joyR.readX()));
-            snprintf(line1, sizeof(line1), "LY%+5d     RY%+5d", displayPct(joyL.readY()), displayPct(joyR.readY()));
-            line2[0] = '\0';
-            line3[0] = '\0';
-            break;
+        {
+            static uint32_t battUiTick = 0;
+            static uint16_t rxPctShown = 0;
+            static uint16_t txPctShown = 0;
+            const BatteryReading localBatt = batteryGetReading();
+            const uint16_t rxPct = receiverGetBatteryPct();
 
+            if (pageChanged || everyMs(DISPLAY_UI_REFRESH_INTERVAL_MS, battUiTick))
+            {
+                if (pageChanged || (abs((int)rxPct - (int)rxPctShown) >= 2))
+                    rxPctShown = rxPct;
+                if (pageChanged || (abs((int)localBatt.percent - (int)txPctShown) >= 2))
+                    txPctShown = localBatt.percent;
+            }
+
+            snprintf(line0, sizeof(line0), "TX%3u%%      RX%3u%%", (unsigned)txPctShown, (unsigned)rxPctShown);
+            line1[0] = '\0';
+            snprintf(line2, sizeof(line1), "LX%+5d     RX%+5d", displayPct(joyL.readX()), displayPct(joyR.readX()));
+            snprintf(line3, sizeof(line2), "LY%+5d     RY%+5d", displayPct(joyL.readY()), displayPct(joyR.readY()));
+            break;
+        }
         case 2:
             snprintf(line0, sizeof(line0), "XR %4d     YR %4d", joyL.readRawX(), joyL.readRawY());
             snprintf(line1, sizeof(line1), "XX%+5d     YY%+5d", displayPct(joyL.readLinearX()), displayPct(joyL.readLinearY()));
             snprintf(line2, sizeof(line2), "X%+6d     Y%+6d", displayPct(joyL.readX()), displayPct(joyL.readY()));
-            snprintf(line3, sizeof(line3), "THE LEFT JOY");
+            line3[0] = '\0';
+            footerLeftText = "LJ";
             break;
 
         case 3:
             snprintf(line0, sizeof(line0), "XR %4d     YR %4d", joyR.readRawX(), joyR.readRawY());
             snprintf(line1, sizeof(line1), "XX%+5d     YY%+5d", displayPct(joyR.readLinearX()), displayPct(joyR.readLinearY()));
             snprintf(line2, sizeof(line2), "X%+6d     Y%+6d", displayPct(joyR.readX()), displayPct(joyR.readY()));
-            snprintf(line3, sizeof(line3), "THE RIGHT JOY");
+            line3[0] = '\0';
+            footerLeftText = "RJ";
             break;
 
         case 4:
-        {
-            static uint32_t auxUiTick = 0;
-            static uint16_t auxUiShown = 0;
-
-            if (pageChanged || everyMs(DISPLAY_UI_REFRESH_INTERVAL_MS, auxUiTick))
-            {
-                uint16_t auxRaw = receiverGetLastAux();
-
-                if (pageChanged || (abs((int)auxRaw - (int)auxUiShown) >= 4))
-                    auxUiShown = auxRaw;
-
-                snprintf(line0, sizeof(line0), "AUX pct: %03u %%", (unsigned)auxUiShown);
-                line1[0] = '\0';
-                line2[0] = '\0';
-                line3[0] = '\0';
-            }
-            else
-            {
-                return;
-            }
-
-            break;
-        }
-
-        case 5:
-            snprintf(line0, sizeof(line0), "PHOTO raw:%4d", photoSensorReadRaw());
-            snprintf(line1, sizeof(line1), "PHOTO pct:%3u %%", (unsigned)photoSensorReadPct());
+            snprintf(line0, sizeof(line0), "PHOTO raw:%04d", photoSensorReadRaw());
+            snprintf(line1, sizeof(line1), "PHOTO pct:%03u %%", (unsigned)photoSensorReadPct());
             line2[0] = '\0';
             line3[0] = '\0';
             break;
 
-        case 6:
+        case 5:
             snprintf(line0, sizeof(line0), " SETTINGS");
             snprintf(line2, sizeof(line2), " PRESS C TO ENTER");
             line1[0] = '\0';
@@ -202,7 +199,7 @@ void screenMainLoop(int mode, uint8_t batState)
                  totalPages,
                  buttonsLastReleaseKey(),
                  pageChanged,
-                 nullptr);
+                 footerLeftText);
 }
 
 bool screenMainConsumeSettingsRequest()

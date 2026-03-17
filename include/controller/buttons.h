@@ -22,11 +22,6 @@ void buttonsTick(); // updates key state, does not consume events
 void buttonsInit();
 
 /*
- * Current debounced key.
- */
-Key buttonsCurrent();
-
-/*
  * Debounced state: is the given key held down.
  */
 bool keyDown(Key k);
@@ -60,15 +55,6 @@ bool keyReleased(Key k, uint32_t *durationMs = nullptr, bool consume = true);
 
 // Last released key.
 Key buttonsLastReleaseKey();
-
-// Legacy diagnostic helper kept temporarily for the old calibration screen.
-uint16_t buttonsReadRawAdc();
-
-// Legacy threshold API kept temporarily for the old calibration screen.
-int buttonsGetThreshold(Key k);
-void buttonsSetThreshold(Key k, int value);
-void buttonsAdjustThreshold(Key k, int delta);
-void buttonsSaveThresholds();
 
 // Clear all pending events/holds (e.g., when entering a new screen)
 void buttonsConsumeAll();

@@ -145,11 +145,6 @@ void Joystick::begin()
     pinMode(pinBtn, INPUT_PULLUP);
 }
 
-bool Joystick::pressed()
-{
-    return digitalRead(pinBtn) == LOW;
-}
-
 int Joystick::readAxisRaw(uint8_t pin) const
 {
     return analogRead(pin);
@@ -288,47 +283,6 @@ void Joystick::setCalibration(int minX, int maxX, int minY, int maxY)
     centerY = (calMinY + calMaxY) / 2;
 }
 
-void Joystick::recenterAround(int centerX, int centerY)
-{
-    int spanX = calMaxX - calMinX;
-    int spanY = calMaxY - calMinY;
-    if (spanX < 2)
-        spanX = ADC_MAX;
-    if (spanY < 2)
-        spanY = ADC_MAX;
-
-    int halfX = spanX / 2;
-    int halfY = spanY / 2;
-
-    calMinX = centerX - halfX;
-    calMaxX = centerX + halfX;
-    calMinY = centerY - halfY;
-    calMaxY = centerY + halfY;
-
-    if (calMinX < 0)
-        calMinX = 0;
-    if (calMaxX > ADC_MAX)
-        calMaxX = ADC_MAX;
-    if (calMinY < 0)
-        calMinY = 0;
-    if (calMaxY > ADC_MAX)
-        calMaxY = ADC_MAX;
-
-    if (calMaxX <= calMinX + 2)
-    {
-        calMinX = 0;
-        calMaxX = ADC_MAX;
-    }
-    if (calMaxY <= calMinY + 2)
-    {
-        calMinY = 0;
-        calMaxY = ADC_MAX;
-    }
-
-    this->centerX = (centerX < calMinX) ? calMinX : (centerX > calMaxX ? calMaxX : centerX);
-    this->centerY = (centerY < calMinY) ? calMinY : (centerY > calMaxY ? calMaxY : centerY);
-}
-
 void joysticksLoadCalibration()
 {
     bool okL = joyL.loadCalibration(STORAGE_KEY_JOY_L);
@@ -437,18 +391,6 @@ void joysticksSetExpoAxis(uint8_t axis, float e)
     default:
         break;
     }
-}
-
-void joysticksSaveExpo()
-{
-    ExpoData d{};
-    d.magic = EXPO_MAGIC;
-    d.exLX = clampExpo(joyL.getExpoX());
-    d.exLY = clampExpo(joyL.getExpoY());
-    d.exRX = clampExpo(joyR.getExpoX());
-    d.exRY = clampExpo(joyR.getExpoY());
-    d.crc = crcExpo(d);
-    storageWriteBlob(STORAGE_KEY_EXPO, &d, sizeof(d));
 }
 
 void joysticksSaveExpoAxis(uint8_t axis)

@@ -19,4 +19,4 @@ void uiRenderPage(const char *line0,
                   uint8_t totalPages,
                   Key lastKey,
                   bool forceRedraw,
-                  const char *footerOverride = nullptr);
+                  const char *footerLeftText = nullptr);

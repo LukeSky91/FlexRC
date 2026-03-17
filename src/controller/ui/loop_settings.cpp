@@ -6,9 +6,9 @@
 #include "common/time_utils.h"
 
 static uint32_t oledTick = 0;
-// 1=CALIB JOYS, 2=JOYS DEADZONE, 3=JOYS EXPO, 4=LED TEST, 5=PHOTO
+// 1=CALIB JOYS, 2=JOYS EXPO, 3=LED TEST, 4=PHOTO
 static uint8_t page = 1;
-static const uint8_t totalPages = 5;
+static const uint8_t totalPages = 4;
 static bool initDone = false;
 static uint8_t prevPage = 1;
 static bool centerArmed = false;
@@ -92,17 +92,13 @@ LoopSettingsResult loopSettingsLoop(int mode, uint8_t batState)
         }
         else if (page == 2)
         {
-            return LoopSettingsResult::StartDeadband;
+            return LoopSettingsResult::StartExpo;
         }
         else if (page == 3)
         {
-            return LoopSettingsResult::StartExpo;
-        }
-        else if (page == 4)
-        {
             return LoopSettingsResult::StartLedTest;
         }
-        else if (page == 5)
+        else if (page == 4)
         {
             return LoopSettingsResult::StartPhotoSettings;
         }
@@ -114,43 +110,34 @@ LoopSettingsResult loopSettingsLoop(int mode, uint8_t batState)
 
     char line0[21], line1[21], line2[21], line3[21];
     line0[0] = line1[0] = line2[0] = line3[0] = '\0';
-    const char *footerOverride = nullptr;
 
     switch (page)
     {
     case 1:
         snprintf(line0, sizeof(line0), "   JOYSTICKS");
-        snprintf(line1, sizeof(line1), "     CALIBRATE");
+        snprintf(line1, sizeof(line1), "   CALIBRATE");
         line2[0] = '\0';
         break;
 
     case 2:
         snprintf(line0, sizeof(line0), "   JOYSTICKS");
-        snprintf(line1, sizeof(line1), "     DEADZONE");
+        snprintf(line1, sizeof(line1), "   EXPO");
         line2[0] = '\0';
         break;
 
     case 3:
-    {
-        snprintf(line0, sizeof(line0), "   JOYSTICKS");
-        snprintf(line1, sizeof(line1), "       EXPO");
+        snprintf(line0, sizeof(line0), "   LED");
+        snprintf(line1, sizeof(line1), "   TEST");
         line2[0] = '\0';
         break;
-    }
 
     case 4:
-        snprintf(line0, sizeof(line0), "      LED");
-        snprintf(line1, sizeof(line1), "      TEST");
-        line2[0] = '\0';
-        break;
-
-    case 5:
-        snprintf(line0, sizeof(line0), "     PHOTO");
-        snprintf(line1, sizeof(line1), "    SETTINGS");
+        snprintf(line0, sizeof(line0), "   PHOTO");
+        snprintf(line1, sizeof(line1), "   SETTINGS");
         line2[0] = '\0';
         break;
     }
 
-    uiRenderPage(line0, line1, line2, line3, true, page, totalPages, buttonsLastReleaseKey(), pageChanged, footerOverride);
+    uiRenderPage(line0, line1, line2, line3, true, page, totalPages, buttonsLastReleaseKey(), pageChanged, nullptr);
     return LoopSettingsResult::Stay;
 }

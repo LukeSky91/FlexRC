@@ -5,7 +5,6 @@
 #include "controller/ui/loop_main.h"
 #include "controller/ui/loop_settings.h"
 #include "controller/ui/settings_pages/calib_joy.h"
-#include "controller/ui/settings_pages/set_deadzone.h"
 #include "controller/ui/settings_pages/set_expo.h"
 #include "controller/ui/settings_pages/led_test.h"
 #include "controller/ui/settings_pages/set_photo.h"
@@ -17,13 +16,14 @@ enum class UiMode
     Main = 0,
     Settings,
     JoyCalibration,
-    Deadband,
     Expo,
     LedTest,
     PhotoSettings
 };
 
 static UiMode uiMode = UiMode::Main;
+static const size_t kFooterLeftWidth = 13;
+static const size_t kFooterRightWidth = 7;
 
 static void formatFooterWithPage(char *dst,
                                  size_t dstSize,
@@ -37,16 +37,13 @@ static void formatFooterWithPage(char *dst,
     char pageBuf[8];
     snprintf(pageBuf, sizeof(pageBuf), "[%u/%u]", page, totalPages);
 
-    const size_t pageLen = strlen(pageBuf);
-    const size_t width = (dstSize > 0) ? (dstSize - 1) : 0;
-    const size_t leftWidth = (width > pageLen) ? (width - pageLen) : 0;
-
     char leftBuf[21];
     snprintf(leftBuf, sizeof(leftBuf), "%s", leftText ? leftText : "");
-    snprintf(dst, dstSize, "%-*.*s%s",
-             (int)leftWidth,
-             (int)leftWidth,
+    snprintf(dst, dstSize, "%-*.*s%*s",
+             (int)kFooterLeftWidth,
+             (int)kFooterLeftWidth,
              leftBuf,
+             (int)kFooterRightWidth,
              pageBuf);
 }
 
@@ -73,10 +70,6 @@ void menuInit()
     case StartScreen::DirectCalibJoy:
         calibJoyStart();
         uiMode = UiMode::JoyCalibration;
-        break;
-    case StartScreen::DirectDeadzone:
-        setDeadzoneStart();
-        uiMode = UiMode::Deadband;
         break;
     default:
         screenMainSetStartPage(1, false);
@@ -105,12 +98,6 @@ bool menuLoop(int mode, uint8_t batState)
             calibJoyStart();
             uiMode = UiMode::JoyCalibration;
             return true; // block comm during joystick calibration
-        }
-        if (r == LoopSettingsResult::StartDeadband)
-        {
-            setDeadzoneStart();
-            uiMode = UiMode::Deadband;
-            return true; // block comm during deadband page
         }
         if (r == LoopSettingsResult::StartExpo)
         {
@@ -156,24 +143,12 @@ bool menuLoop(int mode, uint8_t batState)
         return true; // Running
     }
 
-    case UiMode::Deadband:
-    {
-        DeadbandResult dr = setDeadzoneLoop();
-        if (dr == DeadbandResult::ExitToSettings)
-        {
-            loopSettingsStart(2); // return to deadzone page
-            uiMode = UiMode::Settings;
-            return false;
-        }
-        return true;
-    }
-
     case UiMode::Expo:
     {
         ExpoResult er = setExpoLoop();
         if (er == ExpoResult::ExitToSettings)
         {
-            loopSettingsStart(3); // return to EXPO page
+            loopSettingsStart(2); // return to EXPO page
             uiMode = UiMode::Settings;
             return false;
         }
@@ -185,7 +160,7 @@ bool menuLoop(int mode, uint8_t batState)
         LedTestResult lr = ledTestLoop();
         if (lr == LedTestResult::ExitToSettings)
         {
-            loopSettingsStart(4);
+            loopSettingsStart(3);
             uiMode = UiMode::Settings;
         }
         return false;
@@ -196,7 +171,7 @@ bool menuLoop(int mode, uint8_t batState)
         PhotoSettingsResult pr = setPhotoLoop();
         if (pr == PhotoSettingsResult::ExitToSettings)
         {
-            loopSettingsStart(5);
+            loopSettingsStart(4);
             uiMode = UiMode::Settings;
         }
         return false;
@@ -215,8 +190,10 @@ void uiRenderPage(const char *line0,
                   uint8_t totalPages,
                   Key lastKey,
                   bool forceRedraw,
-                  const char *footerOverride)
+                  const char *footerLeftText)
 {
+    (void)lastKey;
+
     // 0..3: normalnie jak było
     displayText(0, line0 ? line0 : "");
     displayText(1, line1 ? line1 : "");
@@ -228,57 +205,15 @@ void uiRenderPage(const char *line0,
     static uint32_t footerTick = 0;
     const bool footerDue = forceRedraw || everyMs(DISPLAY_UI_REFRESH_INTERVAL_MS, footerTick);
 
-    if (footerOverride)
-    {
-        if (footerDue)
-        {
-            displayText(4, footerOverride);
-        }
-    }
-    else if (showFooter)
+    if (showFooter)
     {
         if (footerDue)
         {
             char line4[21];
-            const char *keyLabel = "--";
-            switch (lastKey)
-            {
-            case Key::Left:
-                keyLabel = "L";
-                break;
-            case Key::Right:
-                keyLabel = "R";
-                break;
-            case Key::Up:
-                keyLabel = "U";
-                break;
-            case Key::Down:
-                keyLabel = "D";
-                break;
-            case Key::Center:
-                keyLabel = "C";
-                break;
-            case Key::F1:
-                keyLabel = "F1";
-                break;
-            case Key::F2:
-                keyLabel = "F2";
-                break;
-            case Key::JL:
-                keyLabel = "LJ";
-                break;
-            case Key::JR:
-                keyLabel = "RJ";
-                break;
-            default:
-                keyLabel = "--";
-                break;
-            }
-
             if (FOOTER_TIMEKEY_ENABLE)
-                formatFooterWithPage(line4, sizeof(line4), keyLabel, page, totalPages);
+                formatFooterWithPage(line4, sizeof(line4), footerLeftText ? footerLeftText : "", page, totalPages);
             else
-                formatFooterWithPage(line4, sizeof(line4), "", page, totalPages);
+                formatFooterWithPage(line4, sizeof(line4), footerLeftText ? footerLeftText : "", page, totalPages);
 
             displayText(4, line4);
         }

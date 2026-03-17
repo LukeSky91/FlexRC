@@ -189,6 +189,8 @@ static void overlayExpo(U8G2 &oled, void *)
 static void render(bool forceRedraw)
 {
     char line4[21];
+    char footerLeft[14];
+    char footerRight[8];
 
     const char selView = (selected == ExpoItem::View) ? '>' : ' ';
     const char viewChar = (viewMode == ViewMode::New) ? 'N' : 'O';
@@ -202,14 +204,17 @@ static void render(bool forceRedraw)
 
     if (showSave)
     {
-        snprintf(line4, sizeof(line4), "%-15.15s[%u/4]",
-                 (String(axisLabel(axisIdx)) + " " + selView + viewChar + " SAVE").c_str(), pageIdx);
+        snprintf(footerLeft, sizeof(footerLeft), "%s",
+                 (String(axisLabel(axisIdx)) + " " + selView + viewChar + " SAVE").c_str());
     }
     else
     {
-        snprintf(line4, sizeof(line4), "%-15.15s[%u/4]",
-                 (String(axisLabel(axisIdx)) + " " + selView + viewChar).c_str(), pageIdx);
+        snprintf(footerLeft, sizeof(footerLeft), "%s",
+                 (String(axisLabel(axisIdx)) + " " + selView + viewChar).c_str());
     }
+
+    snprintf(footerRight, sizeof(footerRight), "[%u/4]", pageIdx);
+    snprintf(line4, sizeof(line4), "%-13.13s%7s", footerLeft, footerRight);
 
     displayText(4, line4);
     displayFlush(forceRedraw);

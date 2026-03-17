@@ -10,6 +10,7 @@
 #include "controller/joysticks.h"
 #include "controller/photo_sensor.h"
 #include "controller/storage.h"
+#include "controller/battery.h"
 #include "controller/ui/menu.h"
 #include "controller/receiver.h"
 
@@ -44,6 +45,7 @@ void setup()
     ledsInit();
     joystickInit();
     photoSensorInit();
+    batteryInit();
 
 #if EEPROM_FORCE_DEFAULTS_ON_BOOT
     // Force default config into EEPROM (use once after upload).
@@ -57,14 +59,10 @@ void setup()
     joyR.setCenter(ADC_CENTER, ADC_CENTER);
     joysticksSaveCalibration();
     joysticksSaveDeadzone();
-    joysticksSaveExpo();
-
-    buttonsSetThreshold(Key::Down, TH_DOWN_DEFAULT);
-    buttonsSetThreshold(Key::Up, TH_UP_DEFAULT);
-    buttonsSetThreshold(Key::Right, TH_RIGHT_DEFAULT);
-    buttonsSetThreshold(Key::Center, TH_CENTER_DEFAULT);
-    buttonsSetThreshold(Key::Left, TH_LEFT_DEFAULT);
-    buttonsSaveThresholds();
+    joysticksSaveExpoAxis(0);
+    joysticksSaveExpoAxis(1);
+    joysticksSaveExpoAxis(2);
+    joysticksSaveExpoAxis(3);
 #endif
 
     ledsSet(LedSlot::First, RED, 100);
@@ -91,6 +89,7 @@ void loop()
 {
 
     buttonsTick();
+    batteryTick();
 
 #if PERF_DEBUG
     uint32_t t0 = millis();

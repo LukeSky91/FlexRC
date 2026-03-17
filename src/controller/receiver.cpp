@@ -6,7 +6,7 @@
 #include "controller/photo_sensor.h"
 
 // ==================== Debug ====================
-#define AUX_DEBUG 1 // 1 = print debug to Serial (USB), 0 = off
+#define BATTERY_DEBUG 1 // 1 = print debug to Serial (USB), 0 = off
 
 // ==================== Timing ====================
 static const uint32_t TX_TICK_MS = 20;     // 50 Hz TX
@@ -17,16 +17,16 @@ static const uint32_t RX_TIMEOUT_MS = 120; // failsafe: if no valid RX frame for
 static const uint8_t EMA_SHIFT = 2; // EMA: 1/8
 
 // Snap ends to avoid faint glow near 0 due to noise/EMA tail
-static const uint8_t AUX_SNAP_LOW = 1;   // <1  -> 0
-static const uint8_t AUX_SNAP_HIGH = 99; // >99 -> 100
+static const uint8_t BATTERY_SNAP_LOW = 1;   // <1  -> 0
+static const uint8_t BATTERY_SNAP_HIGH = 99; // >99 -> 100
 
 // Near-zero LED hysteresis
 static const uint8_t LED_OFF_TH = 2; // <=2  -> force off
 static const uint8_t LED_ON_TH = 4;  // >=4  -> enable again
 
 // ==================== State ====================
-static uint16_t auxTarget = 0; // filtered target (0..100)
-static uint16_t auxSmooth = 0; // EMA output (0..100)
+static uint16_t batteryPctTarget = 0; // filtered target (0..100)
+static uint16_t batteryPctSmooth = 0; // EMA output (0..100)
 
 static uint32_t lastTxMs = 0;
 static uint32_t lastLedMs = 0;
@@ -36,69 +36,13 @@ static uint32_t lastRxOkMs = 0;
 static uint16_t s0 = 0, s1 = 0, s2 = 0;
 static bool samplesInit = false;
 
-// LED global brightness (percent, after RGB computed)
-// Map 0..100% -> hue (blue..red). 0=>blue(160), 100=>red(0)
-// Zmień kolejność jeśli chcesz red->blue: map(..., 0,100,0,160)
-static inline uint16_t pctToHue(uint16_t pct)
-{
-    if (pct > 100)
-        pct = 100;
-    return (uint16_t)map(pct, 0, 100, 240, 0); // 240≈blue, 0=red
-}
-
-// Fast HSV->RGB (8-bit), H:0..360 (tu używamy 0..160)
-static inline Color hsvToRgb(uint16_t h, uint8_t s, uint8_t v)
-{
-    uint8_t region = (h / 60) % 6;
-    uint16_t f = (h % 60) * 255 / 60;
-    uint8_t p = (uint8_t)((uint16_t)v * (255 - s) / 255);
-    uint8_t q = (uint8_t)((uint16_t)v * (255 - (uint16_t)f * s / 255) / 255);
-    uint8_t t = (uint8_t)((uint16_t)v * (255 - (uint16_t)(255 - f) * s / 255) / 255);
-
-    uint8_t r = 0, g = 0, b = 0;
-    switch (region)
-    {
-    case 0:
-        r = v;
-        g = t;
-        b = p;
-        break;
-    case 1:
-        r = q;
-        g = v;
-        b = p;
-        break;
-    case 2:
-        r = p;
-        g = v;
-        b = t;
-        break;
-    case 3:
-        r = p;
-        g = q;
-        b = v;
-        break;
-    case 4:
-        r = t;
-        g = p;
-        b = v;
-        break;
-    default:
-        r = v;
-        g = p;
-        b = q;
-        break; // region 5
-    }
-    return Color{r, g, b};
-}
-
 static uint16_t clampAndSnap(uint16_t v)
 {
     if (v > 100)
         v = 100;
-    if (v < AUX_SNAP_LOW)
+    if (v < BATTERY_SNAP_LOW)
         v = 0;
-    if (v > AUX_SNAP_HIGH)
+    if (v > BATTERY_SNAP_HIGH)
         v = 100;
     return v;
 }
@@ -138,21 +82,21 @@ static void updateLed()
     // If you want ALWAYS blue/purple even on link loss, remove this block.
     if (now - lastRxOkMs > RX_TIMEOUT_MS)
     {
-        auxTarget = 0; // fallback to 0% => blue
+        batteryPctTarget = 0; // fallback to 0% => blue
     }
 
     // EMA smoothing (MUST be signed to avoid uint underflow)
-    int32_t delta = (int32_t)auxTarget - (int32_t)auxSmooth; // can be negative
-    auxSmooth = (uint16_t)((int32_t)auxSmooth + (delta >> EMA_SHIFT));
+    int32_t delta = (int32_t)batteryPctTarget - (int32_t)batteryPctSmooth; // can be negative
+    batteryPctSmooth = (uint16_t)((int32_t)batteryPctSmooth + (delta >> EMA_SHIFT));
 
     // Clamp just in case (should already be 0..100)
-    if (auxSmooth > 100)
-        auxSmooth = 100;
+    if (batteryPctSmooth > 100)
+        batteryPctSmooth = 100;
 
     // Color mapping:
     // 0%   -> Blue    (R=0, G=0, B=255)
     // 100% -> Purple  (R=255, G=0, B=255)
-    uint8_t t = (uint8_t)map(auxSmooth, 0, 100, 0, 255);
+    uint8_t t = (uint8_t)map(batteryPctSmooth, 0, 100, 0, 255);
     Color c{0, t, 255}; // R increases, B stays max, G stays 0
 
     ledsSet(LedSlot::Third, c, photoSensorLedBrightnessPct());
@@ -160,8 +104,8 @@ static void updateLed()
 
 void receiverInit()
 {
-    auxTarget = 0;
-    auxSmooth = 0;
+    batteryPctTarget = 0;
+    batteryPctSmooth = 0;
 
     lastTxMs = 0;
     lastLedMs = 0;
@@ -178,14 +122,14 @@ void receiverLoop(const CommFrame &txFrame)
     // ===== TX max 50 Hz + ACK telemetry =====
     CommFrame rx{};
     bool got = false;
-    uint16_t lastRaw = auxTarget;
+    uint16_t lastRaw = batteryPctTarget;
 
     if (now - lastTxMs >= TX_TICK_MS)
     {
         lastTxMs = now;
         if (commSendFrame(txFrame, &rx))
         {
-            uint16_t v = clampAndSnap(rx.aux);
+            uint16_t v = clampAndSnap(rx.battPct);
             lastRaw = v;
             got = true;
             lastRxOkMs = now; // we got valid ACK telemetry
@@ -207,30 +151,30 @@ void receiverLoop(const CommFrame &txFrame)
             s2 = lastRaw;
         }
 
-        auxTarget = median3(s0, s1, s2);
+        batteryPctTarget = median3(s0, s1, s2);
     }
 
     // Update LED (no ledsShow() here)
     updateLed();
 
-#if AUX_DEBUG
+#if BATTERY_DEBUG
     // Print comm stats + values at low rate
     static uint32_t dbgTick = 0;
     if (now - dbgTick >= 500)
     {
         dbgTick = now;
-        Serial.print("[AUX] raw=");
+        Serial.print("[RX BATT] rawPct=");
         Serial.print((unsigned)lastRaw);
         Serial.print(" target=");
-        Serial.print((unsigned)auxTarget);
+        Serial.print((unsigned)batteryPctTarget);
         Serial.print(" smooth=");
-        Serial.print((unsigned)auxSmooth);
+        Serial.print((unsigned)batteryPctSmooth);
         Serial.println();
     }
 #endif
 }
 
-uint16_t receiverGetLastAux()
+uint16_t receiverGetBatteryPct()
 {
-    return auxTarget; // filtered target (median-of-3)
+    return batteryPctTarget;
 }

@@ -16,14 +16,12 @@ void joysticksSaveDeadzone();
 float joysticksGetExpoAxis(uint8_t axis);
 void joysticksSetExpoAxis(uint8_t axis, float e);
 void joysticksSaveExpoAxis(uint8_t axis);
-void joysticksSaveExpo();
 
 class Joystick {
 public:
     Joystick(uint8_t pinX, uint8_t pinY, uint8_t pinBtn);
 
     void begin();
-    bool pressed();
 
     float readX();
     float readY();
@@ -56,7 +54,6 @@ public:
     int getCalMinY() const { return calMinY; }
     int getCalMaxY() const { return calMaxY; }
     void setCalibration(int minX, int maxX, int minY, int maxY);
-    void recenterAround(int centerX, int centerY);
 
     // Raw ADC reads (physical ADC, no inversion/calibration/curve applied)
     int readRawX() const;

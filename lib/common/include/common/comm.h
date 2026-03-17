@@ -12,7 +12,7 @@
  *
  * Note:
  * - Control values are sent from controller to receiver.
- * - Telemetry (aux) is sent back from receiver to controller
+ * - Telemetry (battery) is sent back from receiver to controller
  *   via NRF24 ACK payload.
  */
 struct CommFrame
@@ -22,7 +22,7 @@ struct CommFrame
     int8_t rx;   // -100..100  Right stick X
     int8_t ry;   // -100..100  Right stick Y
 
-    uint8_t aux; // 0..100  Telemetry value (battery / potentiometer / etc.)
+    uint8_t battPct;  // 0..100 receiver battery state of charge
 };
 
 /*
@@ -48,7 +48,7 @@ bool commInit(uint8_t cePin,
  * Sends control frame to receiver.
  *
  * If rxAck is not nullptr, telemetry received via ACK payload
- * is written back into rxAck->aux.
+ * is written back into rxAck battery fields.
  *
  * Returns true if the packet was acknowledged by receiver.
  */
@@ -62,7 +62,7 @@ bool commSendFrame(const CommFrame &tx, CommFrame *rxAck /* may be nullptr */);
 #ifdef ROLE_RECEIVER
 
 /*
- * Updates ACK payload with telemetry data (aux).
+ * Updates ACK payload with telemetry data (battery).
  *
  * This payload will be attached to the next received control packet
  * and sent back automatically to the controller.

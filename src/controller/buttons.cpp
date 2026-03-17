@@ -1,36 +1,11 @@
 #include <Arduino.h>
 #include "controller/buttons.h"
 #include "controller/config.h"
-#include "controller/storage.h"
 
 static const unsigned long debounceMs = 30;
 static const bool BUTTONS_MONITOR = (PERF_DEBUG != 0);
 static const uint8_t KEY_SLOT_COUNT = (uint8_t)Key::JR + 1;
 
-static int TH_DOWN = TH_DOWN_DEFAULT;
-static int TH_UP = TH_UP_DEFAULT;
-static int TH_RIGHT = TH_RIGHT_DEFAULT;
-static int TH_CENTER = TH_CENTER_DEFAULT;
-static int TH_LEFT = TH_LEFT_DEFAULT;
-
-struct KeyThrData
-{
-    uint16_t magic;
-    uint16_t thDown;
-    uint16_t thUp;
-    uint16_t thRight;
-    uint16_t thCenter;
-    uint16_t thLeft;
-    uint16_t crc;
-};
-
-static const uint16_t KEYS_MAGIC = 0x4B59; // 'KY'
-static const char *STORAGE_KEY_BUTTONS = "btn_thresh";
-
-static uint16_t crcKeys(const KeyThrData &d)
-{
-    return (uint16_t)(d.magic ^ d.thDown ^ d.thUp ^ d.thRight ^ d.thCenter ^ d.thLeft ^ 0xA55A);
-}
 
 static inline uint8_t idx(Key k) { return (uint8_t)k; }
 
@@ -55,36 +30,30 @@ static inline bool isPhysicalPressed(uint8_t pin)
     return digitalRead(pin) == LOW;
 }
 
-static inline void clampThresholds()
-{
-    auto clamp = [](int &v)
-    {
-        if (v < 0)
-            v = 0;
-        if (v > 1023)
-            v = 1023;
-    };
-    clamp(TH_DOWN);
-    clamp(TH_UP);
-    clamp(TH_RIGHT);
-    clamp(TH_CENTER);
-    clamp(TH_LEFT);
-}
-
 static const char *keyName(Key k)
 {
     switch (k)
     {
-    case Key::Left: return "LEFT";
-    case Key::Right: return "RIGHT";
-    case Key::Up: return "UP";
-    case Key::Down: return "DOWN";
-    case Key::Center: return "CENTER";
-    case Key::F1: return "F1";
-    case Key::F2: return "F2";
-    case Key::JL: return "LJ";
-    case Key::JR: return "RJ";
-    default: return "NONE";
+    case Key::Left:
+        return "LEFT";
+    case Key::Right:
+        return "RIGHT";
+    case Key::Up:
+        return "UP";
+    case Key::Down:
+        return "DOWN";
+    case Key::Center:
+        return "CENTER";
+    case Key::F1:
+        return "F1";
+    case Key::F2:
+        return "F2";
+    case Key::JL:
+        return "LJ";
+    case Key::JR:
+        return "RJ";
+    default:
+        return "NONE";
     }
 }
 
@@ -251,25 +220,6 @@ void buttonsInit()
     pinMode(JOY_R_PIN_BTN, INPUT_PULLUP);
 
     eng = Engine{};
-    clampThresholds();
-
-    KeyThrData d{};
-    if (storageReadBlob(STORAGE_KEY_BUTTONS, &d, sizeof(d)) &&
-        d.magic == KEYS_MAGIC && d.crc == crcKeys(d))
-    {
-        TH_DOWN = d.thDown;
-        TH_UP = d.thUp;
-        TH_RIGHT = d.thRight;
-        TH_CENTER = d.thCenter;
-        TH_LEFT = d.thLeft;
-        clampThresholds();
-    }
-}
-
-Key buttonsCurrent()
-{
-    buttonsUpdate();
-    return eng.stable;
 }
 
 bool keyDown(Key k)
@@ -302,65 +252,6 @@ bool keyReleased(Key k, uint32_t *durationMs, bool consume)
 Key buttonsLastReleaseKey()
 {
     return lastReleaseKey;
-}
-
-uint16_t buttonsReadRawAdc()
-{
-    buttonsUpdate();
-    switch (eng.stable)
-    {
-    case Key::Down: return (uint16_t)TH_DOWN;
-    case Key::Up: return (uint16_t)TH_UP;
-    case Key::Right: return (uint16_t)TH_RIGHT;
-    case Key::Center: return (uint16_t)TH_CENTER;
-    case Key::Left: return (uint16_t)TH_LEFT;
-    default: return 0;
-    }
-}
-
-int buttonsGetThreshold(Key k)
-{
-    switch (k)
-    {
-    case Key::Down: return TH_DOWN;
-    case Key::Up: return TH_UP;
-    case Key::Right: return TH_RIGHT;
-    case Key::Center: return TH_CENTER;
-    case Key::Left: return TH_LEFT;
-    default: return 0;
-    }
-}
-
-void buttonsSetThreshold(Key k, int value)
-{
-    switch (k)
-    {
-    case Key::Down: TH_DOWN = value; break;
-    case Key::Up: TH_UP = value; break;
-    case Key::Right: TH_RIGHT = value; break;
-    case Key::Center: TH_CENTER = value; break;
-    case Key::Left: TH_LEFT = value; break;
-    default: break;
-    }
-    clampThresholds();
-}
-
-void buttonsAdjustThreshold(Key k, int delta)
-{
-    buttonsSetThreshold(k, buttonsGetThreshold(k) + delta);
-}
-
-void buttonsSaveThresholds()
-{
-    KeyThrData d{};
-    d.magic = KEYS_MAGIC;
-    d.thDown = TH_DOWN;
-    d.thUp = TH_UP;
-    d.thRight = TH_RIGHT;
-    d.thCenter = TH_CENTER;
-    d.thLeft = TH_LEFT;
-    d.crc = crcKeys(d);
-    storageWriteBlob(STORAGE_KEY_BUTTONS, &d, sizeof(d));
 }
 
 void buttonsConsumeAll()

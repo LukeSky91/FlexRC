@@ -37,7 +37,7 @@ struct TxPkt
 
 struct AckPkt
 {
-    uint8_t aux;   // 0..100 telemetry value
+    uint8_t battPct; // 0..100 telemetry value
     uint8_t flags; // reserved for future use
 };
 #pragma pack(pop)
@@ -127,7 +127,7 @@ bool commSendFrame(const CommFrame &tx, CommFrame *rxAck)
     {
         AckPkt ap{};
         gRadio->read(&ap, sizeof(ap));
-        rxAck->aux = ap.aux;
+        rxAck->battPct = ap.battPct;
     }
 
     return ok;
@@ -141,7 +141,7 @@ bool commSendFrame(const CommFrame &txTelemetry)
         return false;
 
     // Prepare ACK payload (telemetry)
-    gAck.aux = txTelemetry.aux;
+    gAck.battPct = txTelemetry.battPct;
     gAck.flags = 0;
 
     // Attach ACK payload to pipe 1 (control RX pipe)

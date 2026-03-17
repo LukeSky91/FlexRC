@@ -109,6 +109,7 @@ static void setPage(CalPage p)
 static void render(bool forceRedraw)
 {
     char line0[21], line1[21], line2[21], line3[21], line4[21];
+    char footerLeft[14], footerRight[8];
 
     const bool storedView = isStoredPage();
     Joystick &j = stickRef(curStick);
@@ -158,11 +159,12 @@ static void render(bool forceRedraw)
         saveUntilMs = 0;
 
     if (showSave)
-        snprintf(line4, sizeof(line4), "%-15.15s[%u/%u]",
-                 (String(" ") + stickChar + "     SAVE").c_str(), pageIdx, totalPages);
+        snprintf(footerLeft, sizeof(footerLeft), "%s", (String(" ") + stickChar + "     SAVE").c_str());
     else
-        snprintf(line4, sizeof(line4), "%-15.15s[%u/%u]",
-                 (String(" ") + stickChar).c_str(), pageIdx, totalPages);
+        snprintf(footerLeft, sizeof(footerLeft), "%s", (String(" ") + stickChar).c_str());
+
+    snprintf(footerRight, sizeof(footerRight), "[%u/%u]", pageIdx, totalPages);
+    snprintf(line4, sizeof(line4), "%-13.13s%7s", footerLeft, footerRight);
 
     displayText(0, line0);
     displayText(1, line1);

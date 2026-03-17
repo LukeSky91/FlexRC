@@ -5,7 +5,6 @@ enum class LoopSettingsResult
 {
     Stay = 0,
     StartCalibration,
-    StartDeadband,
     StartExpo,
     StartLedTest,
     StartPhotoSettings,

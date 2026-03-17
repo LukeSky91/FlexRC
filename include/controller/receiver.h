@@ -4,9 +4,9 @@
 // Inicjalizacja odbiornika (wymaga wczesniejszego commInit)
 void receiverInit();
 
-// Wysyla ramke nadawcza i obsluguje odbior; ustawia LED 3RD wg aux z ramki RX.
+// Wysyla ramke nadawcza i obsluguje odbior; ustawia LED 3RD wg baterii z ramki RX.
 // txFrame: lokalne wartosci do wyslania.
 void receiverLoop(const CommFrame& txFrame);
 
-// Ostatni odebrany AUX (0-100) z ramki RX; zwraca 0, jesli nic nie odebrano.
-uint16_t receiverGetLastAux();
+// Ostatni odebrany stan baterii odbiornika z ramki RX.
+uint16_t receiverGetBatteryPct();
