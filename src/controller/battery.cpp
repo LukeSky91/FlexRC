@@ -1,4 +1,4 @@
- #include <Arduino.h>
+#include <Arduino.h>
 #include "controller/battery.h"
 #include "controller/config.h"
 
@@ -18,7 +18,6 @@ static uint8_t batteryPctFromMv(uint32_t mv)
 
 static uint32_t readBatteryMillivolts()
 {
-#if defined(ARDUINO_ARCH_ESP32)
     uint32_t adcMvSum = 0;
     for (uint8_t i = 0; i < BATTERY_AVG_SAMPLES; ++i)
     {
@@ -26,16 +25,6 @@ static uint32_t readBatteryMillivolts()
     }
 
     const uint32_t adcMv = adcMvSum / BATTERY_AVG_SAMPLES;
-#else
-    uint32_t rawSum = 0;
-    for (uint8_t i = 0; i < BATTERY_AVG_SAMPLES; ++i)
-    {
-        rawSum += (uint32_t)analogRead(BATTERY_PIN);
-    }
-
-    const uint32_t raw = rawSum / BATTERY_AVG_SAMPLES;
-    const uint32_t adcMv = (raw * 3300UL + (ADC_MAX / 2UL)) / ADC_MAX;
-#endif
 
     return (adcMv * (BATTERY_DIVIDER_R_TOP_OHM + BATTERY_DIVIDER_R_BOTTOM_OHM) + (BATTERY_DIVIDER_R_BOTTOM_OHM / 2UL)) /
            BATTERY_DIVIDER_R_BOTTOM_OHM;
@@ -44,9 +33,7 @@ static uint32_t readBatteryMillivolts()
 void batteryInit()
 {
     pinMode(BATTERY_PIN, INPUT);
-#if defined(ARDUINO_ARCH_ESP32)
     analogReadResolution(ADC_BITS);
-#endif
     lastReadMs = 0;
     gBattery = {0, 0, false};
 }

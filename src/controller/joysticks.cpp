@@ -40,9 +40,20 @@ struct ExpoData
     uint16_t crc;
 };
 
+struct LimitData
+{
+    uint16_t magic;
+    uint8_t limLX;
+    uint8_t limLY;
+    uint8_t limRX;
+    uint8_t limRY;
+    uint16_t crc;
+};
+
 static const uint16_t CAL_MAGIC = 0xCA11;
 static const uint16_t DEADZONE_MAGIC = 0xD00D;
 static const uint16_t EXPO_MAGIC = 0xE202;
+static const uint16_t LIMIT_MAGIC = 0x1A17;
 
 static uint16_t crcCal(const CalData &d)
 {
@@ -53,6 +64,7 @@ static const char *STORAGE_KEY_JOY_L = "joy_l_cal";
 static const char *STORAGE_KEY_JOY_R = "joy_r_cal";
 static const char *STORAGE_KEY_DEADZONE = "joy_deadzone";
 static const char *STORAGE_KEY_EXPO = "joy_expo";
+static const char *STORAGE_KEY_LIMIT = "joy_limit";
 
 static uint16_t crcDeadzone(const DeadzoneData &d)
 {
@@ -93,11 +105,23 @@ static float clampExpo(float e)
     return e;
 }
 
+static int clampLimitPct(int pct)
+{
+    if (pct < 0)
+        pct = 0;
+    if (pct > 100)
+        pct = 100;
+    return pct;
+}
+
+static uint16_t crcLimit(const LimitData &d)
+{
+    return (uint16_t)(d.magic ^ d.limLX ^ d.limLY ^ d.limRX ^ d.limRY ^ 0x6C17);
+}
+
 void joystickInit()
 {
-#if defined(ARDUINO_ARCH_ESP32)
     analogReadResolution(ADC_BITS);
-#endif
 
     joyL.begin();
     joyR.begin();
@@ -109,8 +133,10 @@ void joystickInit()
 
     joyL.setExpo(JOY_EXPO_DEFAULT);
     joyL.setDeadzone(JOY_DEADZONE_DEFAULT, JOY_DEADZONE_DEFAULT);
+    joyL.setLimitPct(100, 100);
     joyR.setExpo(JOY_EXPO_DEFAULT);
     joyR.setDeadzone(JOY_DEADZONE_DEFAULT, JOY_DEADZONE_DEFAULT);
+    joyR.setLimitPct(100, 100);
 
     joysticksLoadCalibration();
 
@@ -134,6 +160,14 @@ void joystickInit()
         joyL.setExpoY(clampExpo(ex.exLY));
         joyR.setExpoX(clampExpo(ex.exRX));
         joyR.setExpoY(clampExpo(ex.exRY));
+    }
+
+    LimitData lim{};
+    if (storageReadBlob(STORAGE_KEY_LIMIT, &lim, sizeof(lim)) &&
+        lim.magic == LIMIT_MAGIC && lim.crc == crcLimit(lim))
+    {
+        joyL.setLimitPct(clampLimitPct((int)lim.limLX), clampLimitPct((int)lim.limLY));
+        joyR.setLimitPct(clampLimitPct((int)lim.limRX), clampLimitPct((int)lim.limRY));
     }
 }
 
@@ -420,6 +454,57 @@ void joysticksSaveExpoAxis(uint8_t axis)
     storageWriteBlob(STORAGE_KEY_EXPO, &d, sizeof(d));
 }
 
+int joysticksGetLimitAxis(uint8_t axis)
+{
+    switch (axis)
+    {
+    case 0:
+        return joyL.getLimitPctX();
+    case 1:
+        return joyL.getLimitPctY();
+    case 2:
+        return joyR.getLimitPctX();
+    case 3:
+        return joyR.getLimitPctY();
+    default:
+        return 100;
+    }
+}
+
+void joysticksSetLimitAxis(uint8_t axis, int pct)
+{
+    const int c = clampLimitPct(pct);
+    switch (axis)
+    {
+    case 0:
+        joyL.setLimitPctX(c);
+        break;
+    case 1:
+        joyL.setLimitPctY(c);
+        break;
+    case 2:
+        joyR.setLimitPctX(c);
+        break;
+    case 3:
+        joyR.setLimitPctY(c);
+        break;
+    default:
+        break;
+    }
+}
+
+void joysticksSaveLimit()
+{
+    LimitData d{};
+    d.magic = LIMIT_MAGIC;
+    d.limLX = (uint8_t)clampLimitPct(joyL.getLimitPctX());
+    d.limLY = (uint8_t)clampLimitPct(joyL.getLimitPctY());
+    d.limRX = (uint8_t)clampLimitPct(joyR.getLimitPctX());
+    d.limRY = (uint8_t)clampLimitPct(joyR.getLimitPctY());
+    d.crc = crcLimit(d);
+    storageWriteBlob(STORAGE_KEY_LIMIT, &d, sizeof(d));
+}
+
 float Joystick::processAxis(int raw, const char *axisName)
 {
     raw = constrain(raw, 0, ADC_MAX);
@@ -471,6 +556,9 @@ float Joystick::processAxis(int raw, const char *axisName)
     float curved = 100.0f * powf(norm, 1.0f + expoVal);
     if (curved > 100.0f)
         curved = 100.0f;
+
+    const float limitPct = (float)(isX ? limitPctX : limitPctY);
+    curved = curved * constrain(limitPct, 0.0f, 100.0f) / 100.0f;
 
     return sign * curved;
 }

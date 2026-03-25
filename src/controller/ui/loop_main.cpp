@@ -11,14 +11,15 @@
 #include "controller/config.h"
 
 static uint32_t oledTick = 0;
-static uint8_t page = 1; // 1=MAIN, 2=L, 3=R, 4=PHOTO, 5=SETTINGS
-static const uint8_t totalPages = 5;
+static uint8_t page = 1; // 1=DASH, 2=MAIN, 3=L, 4=R, 5=PHOTO, 6=SETTINGS
+static const uint8_t totalPages = 6;
 static bool splashInit = false;
 static bool splashActive = true;
 static uint32_t splashUntilMs = 0;
 static bool settingsRequested = false;
 static bool settingsArmed = false;
 static uint8_t prevPage = 1;
+static DashboardArmState armState = DashboardArmState::Safe;
 
 static int16_t displayPct(float v)
 {
@@ -27,6 +28,20 @@ static int16_t displayPct(float v)
     if (v < -100.0f)
         v = -100.0f;
     return (int16_t)((v >= 0.0f) ? (v + 0.5f) : (v - 0.5f));
+}
+
+static const char *armStateShortName()
+{
+    switch (armState)
+    {
+    case DashboardArmState::Safe:
+        return "SAFE";
+    case DashboardArmState::Armed:
+        return "ARMED";
+    case DashboardArmState::NoPermission:
+        return "NO PERM";
+    }
+    return "SAFE";
 }
 
 void screenMainSetStartPage(uint8_t startPage, bool skipSplash)
@@ -79,7 +94,7 @@ void screenMainLoop(int mode, uint8_t batState)
         pageChanged = true;
     }
 
-    // Arm SETTINGS when entering page 5; flush pending C
+    // Arm SETTINGS when entering the final page; flush pending C
     if (!splashActive && page != prevPage)
     {
         if (page == totalPages)
@@ -122,8 +137,8 @@ void screenMainLoop(int mode, uint8_t batState)
 
     if (splashActive)
     {
-        snprintf(line1, sizeof(line1), "    RC CONTROLLER");
-        snprintf(line2, sizeof(line2), "       by LUKE");
+        snprintf(line0, sizeof(line0), "      ::flexRC::");
+        snprintf(line2, sizeof(line2), "    made::by::LUKE");
     }
     else
     {
@@ -145,13 +160,21 @@ void screenMainLoop(int mode, uint8_t batState)
                     txPctShown = localBatt.percent;
             }
 
-            snprintf(line0, sizeof(line0), "TX%3u%%      RX%3u%%", (unsigned)txPctShown, (unsigned)rxPctShown);
-            line1[0] = '\0';
-            snprintf(line2, sizeof(line1), "LX%+5d     RX%+5d", displayPct(joyL.readX()), displayPct(joyR.readX()));
-            snprintf(line3, sizeof(line2), "LY%+5d     RY%+5d", displayPct(joyL.readY()), displayPct(joyR.readY()));
+            snprintf(line0, sizeof(line0), "TX:%3u%%      RX:%3u%%", (unsigned)txPctShown, (unsigned)rxPctShown);
+            snprintf(line1, sizeof(line1), "LINK: %s", receiverGetLinkStateShortName());
+            snprintf(line2, sizeof(line2), "ARM : %s", armStateShortName());
+            line3[0] = '\0';
             break;
         }
         case 2:
+        {
+            snprintf(line2, sizeof(line2), "LX%+5d     RX%+5d", displayPct(joyL.readX()), displayPct(joyR.readX()));
+            snprintf(line3, sizeof(line3), "LY%+5d     RY%+5d", displayPct(joyL.readY()), displayPct(joyR.readY()));
+            line0[0] = '\0';
+            line1[0] = '\0';
+            break;
+        }
+        case 3:
             snprintf(line0, sizeof(line0), "XR %4d     YR %4d", joyL.readRawX(), joyL.readRawY());
             snprintf(line1, sizeof(line1), "XX%+5d     YY%+5d", displayPct(joyL.readLinearX()), displayPct(joyL.readLinearY()));
             snprintf(line2, sizeof(line2), "X%+6d     Y%+6d", displayPct(joyL.readX()), displayPct(joyL.readY()));
@@ -159,7 +182,7 @@ void screenMainLoop(int mode, uint8_t batState)
             footerLeftText = "LJ";
             break;
 
-        case 3:
+        case 4:
             snprintf(line0, sizeof(line0), "XR %4d     YR %4d", joyR.readRawX(), joyR.readRawY());
             snprintf(line1, sizeof(line1), "XX%+5d     YY%+5d", displayPct(joyR.readLinearX()), displayPct(joyR.readLinearY()));
             snprintf(line2, sizeof(line2), "X%+6d     Y%+6d", displayPct(joyR.readX()), displayPct(joyR.readY()));
@@ -167,14 +190,14 @@ void screenMainLoop(int mode, uint8_t batState)
             footerLeftText = "RJ";
             break;
 
-        case 4:
+        case 5:
             snprintf(line0, sizeof(line0), "PHOTO raw:%04d", photoSensorReadRaw());
             snprintf(line1, sizeof(line1), "PHOTO pct:%03u %%", (unsigned)photoSensorReadPct());
             line2[0] = '\0';
             line3[0] = '\0';
             break;
 
-        case 5:
+        case 6:
             snprintf(line0, sizeof(line0), " SETTINGS");
             snprintf(line2, sizeof(line2), " PRESS C TO ENTER");
             line1[0] = '\0';
@@ -210,4 +233,9 @@ bool screenMainConsumeSettingsRequest()
         return true;
     }
     return false;
+}
+
+void screenMainSetArmState(DashboardArmState state)
+{
+    armState = state;
 }

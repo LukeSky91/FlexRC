@@ -8,6 +8,7 @@ enum class LoopSettingsResult
     StartExpo,
     StartLedTest,
     StartPhotoSettings,
+    StartIoReadings,
     ExitToMain
 };
 

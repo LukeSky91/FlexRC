@@ -7,40 +7,27 @@
 #include "controller/display.h"
 #include "controller/buttons.h"
 #include "controller/leds.h"
+#include "controller/control_link.h"
 #include "controller/joysticks.h"
 #include "controller/photo_sensor.h"
 #include "controller/storage.h"
 #include "controller/battery.h"
+#include "controller/tx_frame.h"
 #include "controller/ui/menu.h"
 #include "controller/receiver.h"
 
 int mode = 0;
 static uint8_t batState = 0;
 
-static int8_t controlToTx(float v)
-{
-    if (v > 100.0f)
-        v = 100.0f;
-    if (v < -100.0f)
-        v = -100.0f;
-    return (int8_t)((v >= 0.0f) ? (v + 0.5f) : (v - 0.5f));
-}
-
 void setup()
 {
     Serial.begin(115200);
     storageInit();
 
-    // ===== I2C globalnie =====
-    // Mega: SDA=20, SCL=21. Nano: A4/A5.
     Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN, I2C_CLOCK_HZ);
     Wire.setClock(I2C_CLOCK_HZ);
 
-    // Timeout w µs (na AVR): 50ms => 50000
-    // reset=false: NIE resetuj sprzŽttowego TWI w ‘>rodku transakcji (u8g2/SH1106 tego nie lubi).
-
-    // ===== Inity peryferiÆˆw =====
-    displayInit(); // tylko inicjalizacja wy‘>wietlacza (bez blokowania sterowania w loop)
+    displayInit();
     buttonsInit();
     ledsInit();
     joystickInit();
@@ -71,23 +58,27 @@ void setup()
     ledsShow();
 
     static const uint8_t NRF_ADDR[5] = {'R', 'C', '0', '0', '1'};
-    commInit(NRF_CE_PIN, NRF_CSN_PIN, NRF_CHANNEL, NRF_ADDR);
-    receiverInit();
+    const bool radioReady = commInit(NRF_CE_PIN, NRF_CSN_PIN, NRF_CHANNEL, NRF_ADDR);
+    receiverInit(radioReady);
 
     menuInit();
+    controlLinkInit();
 
-    // ===== Ekran startowy (tylko ustawia bufory; faktyczny render zrobi displayTick()) =====
     displayClear();
     displayText(0, "BOOT OK");
 
 #if PERF_DEBUG
     Serial.println("Start");
 #endif
+
+    if (!radioReady)
+    {
+        Serial.println("[RADIO] init failed");
+    }
 }
 
 void loop()
 {
-
     buttonsTick();
     batteryTick();
 
@@ -96,26 +87,9 @@ void loop()
 #endif
 
     bool inCalib = menuLoop(mode, batState);
-
-    static uint32_t ledStatusTick = 0;
-    if (everyMs(100, ledStatusTick))
-    {
-        const uint8_t brightnessPct = photoSensorLedBrightnessPct();
-        ledsSet(LedSlot::First, RED, brightnessPct);
-        ledsSet(LedSlot::Second, GREEN, brightnessPct);
-    }
-
-    // 2) komunikacja / sterowanie (zawsze, je‘>li nie jeste‘> w kalibracji)
-    if (!inCalib)
-    {
-         CommFrame tx{
-            controlToTx(joyL.readX()),
-            controlToTx(joyL.readY()),
-            controlToTx(joyR.readX()),
-            controlToTx(joyR.readY()),
-            0u};
-        receiverLoop(tx);
-    }
+    const bool inMainLoop = menuIsInMainLoop();
+    controlLinkTick(inMainLoop);
+    receiverLoop(txFrameBuild(!inCalib && controlLinkAllowsLiveControls(inMainLoop)));
 
     static uint32_t ledShowTick = 0;
     if (everyMs(20, ledShowTick))

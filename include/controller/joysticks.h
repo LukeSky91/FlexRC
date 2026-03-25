@@ -17,6 +17,11 @@ float joysticksGetExpoAxis(uint8_t axis);
 void joysticksSetExpoAxis(uint8_t axis, float e);
 void joysticksSaveExpoAxis(uint8_t axis);
 
+// Limit per axis in percent: 0=lx,1=ly,2=rx,3=ry
+int joysticksGetLimitAxis(uint8_t axis);
+void joysticksSetLimitAxis(uint8_t axis, int pct);
+void joysticksSaveLimit();
+
 class Joystick {
 public:
     Joystick(uint8_t pinX, uint8_t pinY, uint8_t pinBtn);
@@ -39,6 +44,11 @@ public:
     void setExpoY(float e) { expoY = e; }
     float getExpoX() const { return expoX; }
     float getExpoY() const { return expoY; }
+    void setLimitPct(int pctX, int pctY) { limitPctX = pctX; limitPctY = pctY; }
+    void setLimitPctX(int pct) { limitPctX = pct; }
+    void setLimitPctY(int pct) { limitPctY = pct; }
+    int getLimitPctX() const { return limitPctX; }
+    int getLimitPctY() const { return limitPctY; }
     void setCenter(int cx, int cy) { centerX = cx; centerY = cy; }
     int getCenterX() const { return centerX; }
     int getCenterY() const { return centerY; }
@@ -71,6 +81,8 @@ private:
     int deadzoneY = JOY_DEADZONE_DEFAULT;
     float expoX = 1.8f;
     float expoY = 1.8f;
+    int limitPctX = 100;
+    int limitPctY = 100;
 
     int calMinX = 0, calMaxX = ADC_MAX;
     int calMinY = 0, calMaxY = ADC_MAX;

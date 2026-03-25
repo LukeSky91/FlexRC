@@ -1,6 +1,13 @@
 #pragma once
 #include <stdint.h>
 
+enum class DashboardArmState : uint8_t
+{
+    Safe = 0,
+    Armed,
+    NoPermission
+};
+
 // Update main screen (OLED): mode, battery, axes.
 void screenMainLoop(int mode, uint8_t batState);
 
@@ -10,3 +17,6 @@ bool screenMainConsumeSettingsRequest();
 
 // Set start page and optionally skip splash.
 void screenMainSetStartPage(uint8_t startPage, bool skipSplash);
+
+// Dashboard state helpers.
+void screenMainSetArmState(DashboardArmState state);

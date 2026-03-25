@@ -127,6 +127,10 @@ void loop()
         Serial.print(lastRx.rx);
         Serial.print(" | RY: ");
         Serial.print(lastRx.ry);
+        Serial.print(" | JL: ");
+        Serial.print((lastRx.joyButtons & 0x01u) ? 1 : 0);
+        Serial.print(" | JR: ");
+        Serial.print((lastRx.joyButtons & 0x02u) ? 1 : 0);
         Serial.print(" | BATT: ");
         Serial.print(tx.battPct);
         Serial.print("%");

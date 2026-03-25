@@ -13,10 +13,15 @@
 
 static uint32_t oledTick = 0;
 
-static float currentExpo[4] = {0};
-static float originalExpo[4] = {0};
-static int currentDeadzone[4] = {0};
-static int originalDeadzone[4] = {0};
+struct AxisTuneState
+{
+    float expo = 0.0f;
+    int deadzone = 0;
+    int limit = 100;
+};
+
+static AxisTuneState currentState[4];
+static AxisTuneState originalState[4];
 
 static const uint8_t kMarkerCount = 11; // 11 markers = 10 segments
 
@@ -24,6 +29,7 @@ enum class ExpoItem : uint8_t
 {
     Expo = 0,
     Deadzone,
+    Limit,
     View,
     Count
 };
@@ -43,12 +49,16 @@ static uint32_t saveUntilMs = 0;
 static bool curveValid = false;
 static float lastExpo = -999.0f;
 static float lastDz = -1.0f;
+static int lastLimit = -1;
 static uint8_t lastAxis = 255;
 static ViewMode lastView = (ViewMode)255;
 static uint8_t yCache[128];
 
 static void render(bool forceRedraw);
 static void applyCurrentToHardware();
+static AxisTuneState readAxisTuneState(uint8_t axisIdx);
+static void writeAxisTuneState(uint8_t axisIdx, const AxisTuneState &state);
+static void restoreOriginalState();
 
 static float clampExpoLocal(float e)
 {
@@ -57,6 +67,15 @@ static float clampExpoLocal(float e)
     if (e > 3.0f)
         e = 3.0f;
     return e;
+}
+
+static int clampLimitLocal(int pct)
+{
+    if (pct < 0)
+        pct = 0;
+    if (pct > 100)
+        pct = 100;
+    return pct;
 }
 
 static const char *axisLabel(uint8_t idx)
@@ -74,6 +93,37 @@ static const char *axisLabel(uint8_t idx)
     default:
         return "??";
     }
+}
+
+static void formatLimitShort(char *dst, size_t dstSize, int pct)
+{
+    pct = clampLimitLocal(pct);
+    if (pct >= 100)
+        snprintf(dst, dstSize, "--");
+    else
+        snprintf(dst, dstSize, "%02d", pct);
+}
+
+static AxisTuneState readAxisTuneState(uint8_t axis)
+{
+    AxisTuneState state{};
+    state.expo = joysticksGetExpoAxis(axis);
+    state.deadzone = joysticksGetDeadzoneAxis(axis);
+    state.limit = joysticksGetLimitAxis(axis);
+    return state;
+}
+
+static void writeAxisTuneState(uint8_t axis, const AxisTuneState &state)
+{
+    joysticksSetExpoAxis(axis, clampExpoLocal(state.expo));
+    joysticksSetDeadzoneAxis(axis, state.deadzone);
+    joysticksSetLimitAxis(axis, state.limit);
+}
+
+static void restoreOriginalState()
+{
+    for (uint8_t i = 0; i < 4; ++i)
+        writeAxisTuneState(i, originalState[i]);
 }
 
 static void overlayExpo(U8G2 &oled, void *)
@@ -94,7 +144,7 @@ static void overlayExpo(U8G2 &oled, void *)
         return curved * 100.0f;
     };
 
-    float dzNorm = (float)currentDeadzone[axisIdx] / (float)ADC_CENTER;
+    float dzNorm = (float)currentState[axisIdx].deadzone / (float)ADC_CENTER;
     dzNorm = constrain(dzNorm, 0.0f, 0.999f);
 
     auto yFromPct = [&](float pct) -> int
@@ -109,8 +159,10 @@ static void overlayExpo(U8G2 &oled, void *)
         return y;
     };
 
-    const float expoShown = (viewMode == ViewMode::New) ? currentExpo[axisIdx] : originalExpo[axisIdx];
-    const float dzShown = (viewMode == ViewMode::New) ? (float)currentDeadzone[axisIdx] : (float)originalDeadzone[axisIdx];
+    const AxisTuneState &shown = (viewMode == ViewMode::New) ? currentState[axisIdx] : originalState[axisIdx];
+    const float expoShown = shown.expo;
+    const float dzShown = (float)shown.deadzone;
+    const int limitShown = shown.limit;
     dzNorm = dzShown / (float)ADC_CENTER;
     dzNorm = constrain(dzNorm, 0.0f, 0.999f);
 
@@ -150,6 +202,28 @@ static void overlayExpo(U8G2 &oled, void *)
     for (int x = 1; x < W; ++x)
         oled.drawLine(x - 1, yCache[x - 1], x, yCache[x]);
 
+    int limitMarkerX = 0;
+    int limitMarkerY = 0;
+    {
+        const float limitNorm = (float)clampLimitLocal(limitShown) / 100.0f;
+        int bestX = 0;
+        float bestDiff = 2.0f;
+        for (int x = 0; x < W; ++x)
+        {
+            const float xNorm = (float)x / (float)(W - 1);
+            const float norm =
+                (xNorm < dzNorm || dzNorm >= 0.999f) ? 0.0f : constrain((xNorm - dzNorm) / (1.0f - dzNorm), 0.0f, 1.0f);
+            const float diff = fabsf(norm - limitNorm);
+            if (diff < bestDiff)
+            {
+                bestDiff = diff;
+                bestX = x;
+            }
+        }
+        limitMarkerX = bestX;
+        limitMarkerY = yCache[bestX];
+    }
+
     // 4) Always draw markers (using cache)
     for (int i = 0; i < (int)kMarkerCount; ++i)
     {
@@ -162,6 +236,17 @@ static void overlayExpo(U8G2 &oled, void *)
         oled.drawLine(x, y0, x, y1);
     }
 
+    // Current limit indicator on the curve: same style as curve markers,
+    // but extended by +2 px on top and bottom and drawn last so it stays visible
+    // even when it overlaps a regular marker.
+    {
+        const int x = limitMarkerX;
+        const int y = limitMarkerY;
+        const int y0 = (y > topPad + 3) ? y - 4 : topPad;
+        const int y1 = (y < topPad + H - 4) ? y + 4 : (topPad + H - 1);
+        oled.drawLine(x, y0, x, y1);
+    }
+
     // 5) Text in top-left; no panel, but solid glyph background clears old text
     oled.setFontMode(0); // solid background for glyphs
     oled.setDrawColor(1);
@@ -169,9 +254,12 @@ static void overlayExpo(U8G2 &oled, void *)
     char buf[28];
     const char markExpo = (selected == ExpoItem::Expo) ? '>' : ' ';
     const char markDz = (selected == ExpoItem::Deadzone) ? '>' : ' ';
+    const char markLim = (selected == ExpoItem::Limit) ? '>' : ' ';
+    char limCur[4];
+    char limOrig[4];
 
-    int cur100 = (int)(currentExpo[axisIdx] * 100.0f + 0.5f);
-    int orig100 = (int)(originalExpo[axisIdx] * 100.0f + 0.5f);
+    int cur100 = (int)(currentState[axisIdx].expo * 100.0f + 0.5f);
+    int orig100 = (int)(originalState[axisIdx].expo * 100.0f + 0.5f);
     snprintf(buf, sizeof(buf), "%cex: %1d.%02d/%1d.%02d ",
              markExpo,
              cur100 / 100,
@@ -180,8 +268,13 @@ static void overlayExpo(U8G2 &oled, void *)
              orig100 % 100);
     oled.drawStr(0, 10, buf);
 
-    snprintf(buf, sizeof(buf), "%cdzn:%4d/%-4d", markDz, currentDeadzone[axisIdx], originalDeadzone[axisIdx]);
+    snprintf(buf, sizeof(buf), "%cdzn:%4d/%-4d", markDz, currentState[axisIdx].deadzone, originalState[axisIdx].deadzone);
     oled.drawStr(0, 22, buf);
+
+    formatLimitShort(limCur, sizeof(limCur), currentState[axisIdx].limit);
+    formatLimitShort(limOrig, sizeof(limOrig), originalState[axisIdx].limit);
+    snprintf(buf, sizeof(buf), "%clim: %2s/%2s", markLim, limCur, limOrig);
+    oled.drawStr(0, 34, buf);
 
     oled.setFontMode(1); // restore transparent mode (optional)
 }
@@ -224,10 +317,8 @@ static void applyCurrentToHardware()
 {
     for (uint8_t i = 0; i < 4; ++i)
     {
-        joysticksSetExpoAxis(i, clampExpoLocal(currentExpo[i]));
-        currentExpo[i] = joysticksGetExpoAxis(i);
-        joysticksSetDeadzoneAxis(i, currentDeadzone[i]);
-        currentDeadzone[i] = joysticksGetDeadzoneAxis(i);
+        writeAxisTuneState(i, currentState[i]);
+        currentState[i] = readAxisTuneState(i);
     }
 }
 
@@ -238,10 +329,8 @@ void setExpoStart()
 
     for (uint8_t i = 0; i < 4; ++i)
     {
-        originalExpo[i] = joysticksGetExpoAxis(i);
-        currentExpo[i] = originalExpo[i];
-        originalDeadzone[i] = joysticksGetDeadzoneAxis(i);
-        currentDeadzone[i] = originalDeadzone[i];
+        originalState[i] = readAxisTuneState(i);
+        currentState[i] = originalState[i];
     }
 
     // reset cache so first render always recomputes
@@ -250,6 +339,7 @@ void setExpoStart()
     lastView = (ViewMode)255;
     lastExpo = -999.0f;
     lastDz = -1.0f;
+    lastLimit = -1;
 
     selected = ExpoItem::Expo;
     viewMode = ViewMode::New;
@@ -289,44 +379,65 @@ ExpoResult setExpoLoop()
 
     if (selected == ExpoItem::Expo && input.inc)
     {
-        currentExpo[axisIdx] += 0.01f;
+        currentState[axisIdx].expo += 0.01f;
         changed = true;
     }
     else if (selected == ExpoItem::Expo && input.dec)
     {
-        currentExpo[axisIdx] -= 0.01f;
+        currentState[axisIdx].expo -= 0.01f;
         changed = true;
     }
 
     if (selected == ExpoItem::Expo && input.incFast)
     {
-        currentExpo[axisIdx] += 0.05f;
+        currentState[axisIdx].expo += 0.05f;
         changed = true;
     }
     else if (selected == ExpoItem::Expo && input.decFast)
     {
-        currentExpo[axisIdx] -= 0.05f;
+        currentState[axisIdx].expo -= 0.05f;
         changed = true;
     }
 
     if (selected == ExpoItem::Deadzone && input.inc)
     {
-        currentDeadzone[axisIdx] += 1;
+        currentState[axisIdx].deadzone += 1;
         changed = true;
     }
     else if (selected == ExpoItem::Deadzone && input.dec)
     {
-        currentDeadzone[axisIdx] -= 1;
+        currentState[axisIdx].deadzone -= 1;
         changed = true;
     }
     else if (selected == ExpoItem::Deadzone && input.incFast)
     {
-        currentDeadzone[axisIdx] += 5;
+        currentState[axisIdx].deadzone += 5;
         changed = true;
     }
     else if (selected == ExpoItem::Deadzone && input.decFast)
     {
-        currentDeadzone[axisIdx] -= 5;
+        currentState[axisIdx].deadzone -= 5;
+        changed = true;
+    }
+
+    if (selected == ExpoItem::Limit && input.inc)
+    {
+        currentState[axisIdx].limit += 1;
+        changed = true;
+    }
+    else if (selected == ExpoItem::Limit && input.dec)
+    {
+        currentState[axisIdx].limit -= 1;
+        changed = true;
+    }
+    else if (selected == ExpoItem::Limit && input.incFast)
+    {
+        currentState[axisIdx].limit += 5;
+        changed = true;
+    }
+    else if (selected == ExpoItem::Limit && input.decFast)
+    {
+        currentState[axisIdx].limit -= 5;
         changed = true;
     }
 
@@ -339,7 +450,8 @@ ExpoResult setExpoLoop()
 
     if (changed)
     {
-        currentExpo[axisIdx] = clampExpoLocal(currentExpo[axisIdx]);
+        currentState[axisIdx].expo = clampExpoLocal(currentState[axisIdx].expo);
+        currentState[axisIdx].limit = clampLimitLocal(currentState[axisIdx].limit);
         applyCurrentToHardware();
         render(true);
         return ExpoResult::Stay;
@@ -356,8 +468,8 @@ ExpoResult setExpoLoop()
         applyCurrentToHardware();
         joysticksSaveExpoAxis(axisIdx);
         joysticksSaveDeadzone();
-        originalExpo[axisIdx] = currentExpo[axisIdx];
-        originalDeadzone[axisIdx] = currentDeadzone[axisIdx];
+        joysticksSaveLimit();
+        originalState[axisIdx] = currentState[axisIdx];
         viewMode = ViewMode::New;
         saveUntilMs = millis() + 1200;
         render(true);
@@ -367,11 +479,7 @@ ExpoResult setExpoLoop()
     // Back without saving: restore values from entry
     if (input.back)
     {
-        for (uint8_t i = 0; i < 4; ++i)
-        {
-            joysticksSetExpoAxis(i, originalExpo[i]);
-            joysticksSetDeadzoneAxis(i, originalDeadzone[i]);
-        }
+        restoreOriginalState();
         displaySetOverlay(nullptr, nullptr);
         return ExpoResult::ExitToSettings;
     }

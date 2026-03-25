@@ -33,6 +33,7 @@ struct TxPkt
     int8_t ly;
     int8_t rx;
     int8_t ry;
+    uint8_t joyButtons;
 };
 
 struct AckPkt
@@ -42,7 +43,7 @@ struct AckPkt
 };
 #pragma pack(pop)
 
-static_assert(sizeof(TxPkt) == 4, "TxPkt size must be exactly 4 bytes");
+static_assert(sizeof(TxPkt) == 5, "TxPkt size must be exactly 5 bytes");
 static_assert(sizeof(AckPkt) == 2, "AckPkt size must be exactly 2 bytes");
 
 #ifdef ROLE_RECEIVER
@@ -115,7 +116,7 @@ bool commSendFrame(const CommFrame &tx, CommFrame *rxAck)
         return false;
 
     // Convert application frame to on-air packet
-    TxPkt pkt{tx.lx, tx.ly, tx.rx, tx.ry};
+    TxPkt pkt{tx.lx, tx.ly, tx.rx, tx.ry, tx.joyButtons};
 
     // TX requires radio to stop listening
     gRadio->stopListening();
@@ -165,6 +166,7 @@ bool commPollFrame(CommFrame &outFrame)
         outFrame.ly = pkt.ly;
         outFrame.rx = pkt.rx;
         outFrame.ry = pkt.ry;
+        outFrame.joyButtons = pkt.joyButtons;
 
         got = true;
     }

@@ -8,6 +8,7 @@
 #include "controller/ui/settings_pages/set_expo.h"
 #include "controller/ui/settings_pages/led_test.h"
 #include "controller/ui/settings_pages/set_photo.h"
+#include "controller/ui/settings_pages/io_readings.h"
 #include "controller/config.h"
 #include "common/time_utils.h"
 
@@ -18,7 +19,8 @@ enum class UiMode
     JoyCalibration,
     Expo,
     LedTest,
-    PhotoSettings
+    PhotoSettings,
+    IoReadings
 };
 
 static UiMode uiMode = UiMode::Main;
@@ -117,6 +119,12 @@ bool menuLoop(int mode, uint8_t batState)
             uiMode = UiMode::PhotoSettings;
             return false;
         }
+        if (r == LoopSettingsResult::StartIoReadings)
+        {
+            ioReadingsStart();
+            uiMode = UiMode::IoReadings;
+            return false;
+        }
         if (r == LoopSettingsResult::ExitToMain)
         {
             uiMode = UiMode::Main;
@@ -176,9 +184,25 @@ bool menuLoop(int mode, uint8_t batState)
         }
         return false;
     }
+
+    case UiMode::IoReadings:
+    {
+        IoReadingsResult ir = ioReadingsLoop();
+        if (ir == IoReadingsResult::ExitToSettings)
+        {
+            loopSettingsStart(5);
+            uiMode = UiMode::Settings;
+        }
+        return false;
+    }
     }
 
     return false;
+}
+
+bool menuIsInMainLoop()
+{
+    return uiMode == UiMode::Main;
 }
 
 void uiRenderPage(const char *line0,

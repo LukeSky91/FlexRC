@@ -64,23 +64,6 @@ static void renderAll()
     dirty = false;
 }
 
-// Try to detect Wire timeout flag where supported.
-static bool i2cTimeoutFlagGet()
-{
-#if defined(ARDUINO_ARCH_AVR)
-    return Wire.getWireTimeoutFlag();
-#else
-    return false;
-#endif
-}
-
-static void i2cTimeoutFlagClear()
-{
-#if defined(ARDUINO_ARCH_AVR)
-    Wire.clearWireTimeoutFlag();
-#endif
-}
-
 // ---- I2C "unstick" ----
 // Free the bus: 9 SCL clocks + STOP
 static void i2cUnstick()
@@ -238,21 +221,9 @@ void displayTick()
     if (!flushForceRequested && (now - lastFlushMs) < MIN_FLUSH_INTERVAL_MS)
         return;
 
-    i2cTimeoutFlagClear();
-
     renderAll();
 
     lastFlushMs = now;
     flushRequested = false;
     flushForceRequested = false;
-
-    const bool timedOut = i2cTimeoutFlagGet();
-    const bool suspiciousLong = false;
-
-    if (timedOut || suspiciousLong)
-    {
-        oledFault = true;
-        nextRecoverMs = now + RECOVER_BACKOFF_MS;
-        dirty = true;
-    }
 }

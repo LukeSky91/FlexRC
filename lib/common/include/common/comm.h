@@ -21,6 +21,7 @@ struct CommFrame
     int8_t ly;   // -100..100  Left stick Y
     int8_t rx;   // -100..100  Right stick X
     int8_t ry;   // -100..100  Right stick Y
+    uint8_t joyButtons; // bit0=JL, bit1=JR
 
     uint8_t battPct;  // 0..100 receiver battery state of charge
 };

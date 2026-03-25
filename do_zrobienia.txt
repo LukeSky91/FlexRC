@@ -1,0 +1,3 @@
+
+
+kod do wsterowanie jakiegos led czy innego wskaznika na odbiorniku w zaleznosci od wysterowania analogow
