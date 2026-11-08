@@ -2658,7 +2658,7 @@
 			(embedded_fonts no)
 		)
 	)
-	(text "SDA"
+	(text "SCL"
 		(exclude_from_sim no)
 		(at 151.892 55.118 0)
 		(effects
@@ -2669,7 +2669,7 @@
 		)
 		(uuid "01472942-c107-41af-9be0-c959c6fd9ce6")
 	)
-	(text "SDA"
+	(text "SCL"
 		(exclude_from_sim no)
 		(at 129.032 57.404 0)
 		(effects
@@ -2834,7 +2834,7 @@
 		)
 		(uuid "729dd579-40a8-4adb-a850-3fa212c610e5")
 	)
-	(text "SCL"
+	(text "SDA"
 		(exclude_from_sim no)
 		(at 129.032 59.944 0)
 		(effects
@@ -2878,7 +2878,7 @@
 		)
 		(uuid "931b8cfc-3644-4d8a-a920-09455df46373")
 	)
-	(text "SCL"
+	(text "SDA"
 		(exclude_from_sim no)
 		(at 151.892 57.658 0)
 		(effects
