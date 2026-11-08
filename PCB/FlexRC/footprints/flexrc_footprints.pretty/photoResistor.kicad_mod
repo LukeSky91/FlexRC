@@ -55,20 +55,20 @@
 	)
 	(attr smd)
 	(fp_arc
-		(start -2.379958 -0.490714)
-		(mid 0.014433 -2.429978)
-		(end 2.38562 -0.462408)
+		(start -2.038255 -1.025902)
+		(mid -0.006914 -2.281866)
+		(end 2.032 -1.038235)
 		(stroke
 			(width 0.1)
 			(type solid)
 		)
 		(layer "F.SilkS")
-		(uuid "7218a202-947d-4e42-84ea-a2bf7bcbdf6a")
+		(uuid "180af43c-56b9-4584-bb0f-9c54ea655494")
 	)
 	(fp_arc
-		(start 2.38562 0.462408)
-		(mid 0.014433 2.429979)
-		(end -2.379958 0.490714)
+		(start 2.032 1.038233)
+		(mid -0.006914 2.281864)
+		(end -2.038255 1.0259)
 		(stroke
 			(width 0.1)
 			(type solid)

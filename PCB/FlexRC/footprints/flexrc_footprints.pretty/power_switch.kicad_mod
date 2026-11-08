@@ -11,7 +11,7 @@
 		(effects
 			(font
 				(size 0.8 0.8)
-				(thickness 0.1)
+				(thickness 0.15)
 			)
 		)
 	)
@@ -57,25 +57,14 @@
 	(attr through_hole)
 	(fp_rect
 		(start -4.75 -6.25)
-		(end 4.75 -0.25)
-		(stroke
-			(width 0.1)
-			(type solid)
-		)
-		(fill no)
-		(layer "F.SilkS")
-		(uuid "09660f9c-6976-421c-a2df-d52b14c560c7")
-	)
-	(fp_circle
-		(center -3.302 -0.558)
-		(end -3.252 -0.558)
+		(end 4.75 -0.381)
 		(stroke
 			(width 0.15)
 			(type solid)
 		)
 		(fill no)
 		(layer "F.SilkS")
-		(uuid "41d69b6f-9cd2-49b5-a4b3-1414ac337ec8")
+		(uuid "09660f9c-6976-421c-a2df-d52b14c560c7")
 	)
 	(fp_rect
 		(start -5.1 -6.6)

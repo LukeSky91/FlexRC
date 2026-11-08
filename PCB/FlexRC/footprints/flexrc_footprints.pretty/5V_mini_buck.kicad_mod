@@ -15,7 +15,7 @@
 			)
 		)
 	)
-	(property "Value" ""
+	(property "Value" "Val**"
 		(at 0 0.5 0)
 		(unlocked yes)
 		(layer "F.Fab")
@@ -58,7 +58,7 @@
 		(start -8.85 -5.85)
 		(end -8.85 5.85)
 		(stroke
-			(width 0.1)
+			(width 0.15)
 			(type default)
 		)
 		(layer "F.SilkS")
@@ -68,7 +68,7 @@
 		(start -8.85 -5.85)
 		(end 8.85 -5.85)
 		(stroke
-			(width 0.1)
+			(width 0.15)
 			(type solid)
 		)
 		(layer "F.SilkS")
@@ -78,7 +78,7 @@
 		(start -8.85 5.85)
 		(end 8.85 5.85)
 		(stroke
-			(width 0.1)
+			(width 0.15)
 			(type solid)
 		)
 		(layer "F.SilkS")
@@ -88,7 +88,7 @@
 		(start 8.85 -5.85)
 		(end 8.85 5.85)
 		(stroke
-			(width 0.1)
+			(width 0.15)
 			(type default)
 		)
 		(layer "F.SilkS")

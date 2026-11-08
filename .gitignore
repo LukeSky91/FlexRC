@@ -17,3 +17,8 @@ PCB/FlexRC/FlexRC-backups
 
 # Editor / OS temp files
 ~*
+# KiCad autosave
+_autosave-*
+
+# VSCode Local History
+.history/

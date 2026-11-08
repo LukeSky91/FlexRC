@@ -13,6 +13,13 @@ static uint32_t lastDiag = 0;
 static uint16_t lastBatteryMv = 0;
 static uint8_t lastBatteryPct = 0;
 
+static uint8_t pwmFromAxis(int8_t axis)
+{
+    const uint16_t magnitude = (axis < 0) ? (uint16_t)(-axis) : (uint16_t)axis;
+    const uint16_t clamped = (magnitude > 100U) ? 100U : magnitude;
+    return (uint8_t)((clamped * 255U + 50U) / 100U);
+}
+
 static uint8_t batteryPctFromMv(uint32_t mv)
 {
     if (mv <= BATTERY_CELL_EMPTY_MV)
@@ -57,6 +64,10 @@ void setup()
 #endif
 #endif
     pinMode(BATTERY_PIN, INPUT);
+    pinMode(STEERING_PWM_PIN, OUTPUT);
+    pinMode(THROTTLE_PWM_PIN, OUTPUT);
+    analogWrite(STEERING_PWM_PIN, 0);
+    analogWrite(THROTTLE_PWM_PIN, 0);
 
 #if SERIAL_ENABLED
     Serial.println("Receiver (Nano) start");
@@ -113,6 +124,9 @@ void loop()
         rxCount++;
     }
 #endif
+
+    analogWrite(STEERING_PWM_PIN, pwmFromAxis(lastRx.rx));
+    analogWrite(THROTTLE_PWM_PIN, pwmFromAxis(lastRx.ly));
 
     // Log every 250 ms
     if (millis() - lastLog >= 250)

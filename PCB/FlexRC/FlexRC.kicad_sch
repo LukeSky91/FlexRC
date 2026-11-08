@@ -1,7 +1,7 @@
 (kicad_sch
-	(version 20250114)
+	(version 20260306)
 	(generator "eeschema")
-	(generator_version "9.0")
+	(generator_version "10.0")
 	(uuid "0116ad82-ac95-4a03-bd4e-94de3191d2e0")
 	(paper "A4")
 	(title_block
@@ -26,11 +26,13 @@
 			(type solid)
 		)
 		(fill
-			(color 0 0 0 0.0000)
+			(color 0 0 0 0)
 		)
 		(uuid "38579fdb-5ac6-4328-8b11-3c58f6408327")
 		(property "Sheetname" "MCU_RADIO_OLED"
 			(at 25.4 62.7884 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -40,6 +42,8 @@
 		)
 		(property "Sheetfile" "MCU.kicad_sch"
 			(at 25.4 89.4846 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -68,11 +72,13 @@
 			(type solid)
 		)
 		(fill
-			(color 0 0 0 0.0000)
+			(color 0 0 0 0)
 		)
 		(uuid "7e166add-16b4-495d-9eb5-24168b257373")
 		(property "Sheetname" "Power"
 			(at 25.4 24.6884 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -82,6 +88,8 @@
 		)
 		(property "Sheetfile" "Power.kicad_sch"
 			(at 25.4 51.3846 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -110,11 +118,13 @@
 			(type solid)
 		)
 		(fill
-			(color 0 0 0 0.0000)
+			(color 0 0 0 0)
 		)
 		(uuid "cc30013f-e3c0-4b7a-855c-63dbc26cdfb4")
 		(property "Sheetname" "RGBs"
 			(at 76.2 62.7884 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -124,6 +134,8 @@
 		)
 		(property "Sheetfile" "RGBs.kicad_sch"
 			(at 76.2 89.4846 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -152,11 +164,13 @@
 			(type solid)
 		)
 		(fill
-			(color 0 0 0 0.0000)
+			(color 0 0 0 0)
 		)
 		(uuid "e8e351e4-faf1-4c4b-86a9-7821414fba43")
 		(property "Sheetname" "Buttons_Joys"
 			(at 76.2 24.6884 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -166,6 +180,8 @@
 		)
 		(property "Sheetfile" "Buttons.kicad_sch"
 			(at 76.2 51.3846 0)
+			(show_name no)
+			(do_not_autoplace no)
 			(effects
 				(font
 					(size 1.27 1.27)
