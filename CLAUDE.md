@@ -171,7 +171,7 @@ testowe tylko `RF24`.
 
 **Podział `src/controller/`:**
 
-- `hardware_config.h` — jedyne źródło numerów GPIO (mapa pod stykówkę),
+- `hardware_config.h` — jedyne źródło numerów GPIO (mapa wg PCB rev V1),
   reszta kodu odwołuje się do niego przez `config.h`, nigdy bezpośrednio
   do numerów pinów.
 - `config.h` — stałe projektowe: deadzone/expo domyślne, timing wyświetlacza,
@@ -230,46 +230,38 @@ w obie strony, rozdzielony przez `ROLE_CONTROLLER`/`ROLE_RECEIVER`):
 
 ---
 
-## ⚠️ Mapa pinów — DWIE rewizje sprzętu
+## Mapa pinów — PCB rev V1
 
-Piny zostały **celowo przemapowane** na etapie projektu PCB, żeby ograniczyć
-krzyżowania ścieżek. Firmware (`include/controller/hardware_config.h`)
-odpowiada stykówce. Schemat/PCB odpowiada tabeli z sekcji sprzętowej poniżej.
-**Żadna wersja nie jest błędem** — to dwie rewizje tego samego urządzenia.
+**Źródło prawdy:** netlista `PCB/FlexRC/FlexRC.kicad_pcb` (nazwy netów na
+padach A1 = ESP32-S3-Pico). Firmware (`include/controller/hardware_config.h`)
+jest zgodny z tą tabelą. **Stykówka nie jest już wspierana** — ostatni stan
+pod stykówkę: `git tag breadboard-working`.
 
-Sprawdzone **wszystkie** sygnały (nie tylko SPI) — jedyna faktyczna
-rozbieżność to zamiana MOSI/MISO na SPI:
-
-| Sygnał | GPIO — firmware (stykówka) | GPIO — schemat (PCB, miedź) | Zgodne? |
-|---|---|---|---|
-| Joystick R — oś Y (`RY`) | GP1 | GP1 | ✅ |
-| Joystick R — oś X (`RX`) | GP2 | GP2 | ✅ |
-| Joystick L — oś Y (`LY`) | GP4 | GP4 | ✅ |
-| Joystick L — oś X (`LX`) | GP5 | GP5 | ✅ |
-| Przycisk gimbala R | GP6 | GP6 | ✅ |
-| Przycisk gimbala L | GP7 | GP7 | ✅ |
-| Fotorezystor | GP8 | GP8 | ✅ |
-| Pomiar baterii (nadajnik) | GP9 | GP9 | ✅ |
-| SW_UP | GP11 | GP11 | ✅ |
-| SW_LEFT | GP12 | GP12 | ✅ |
-| SW_CENTER | GP13 | GP13 | ✅ |
-| SW_RIGHT | GP14 | GP14 | ✅ |
-| SW_DOWN | GP15 | GP15 | ✅ |
-| I2C SCL (OLED) | GP17 | GP17 | ✅ |
-| I2C SDA (OLED) | GP18 | GP18 | ✅ |
-| nRF24 SCK | GP34 | GP34 | ✅ |
-| nRF24 MISO | GP35 | GP35 (fizycznie MOSI) | ❌ zamienione |
-| nRF24 MOSI | GP36 | GP36 (fizycznie MISO) | ❌ zamienione |
-| nRF24 CSN | GP37 | GP37 | ✅ |
-| nRF24 CE | GP38 | GP38 | ✅ |
-| WS2812B DIN | GP39 | GP39 | ✅ |
-| SW_F2 | GP41 | GP41 | ✅ |
-| SW_F1 | GP42 | GP42 | ✅ |
-
-Firmware deklaruje `NRF_MOSI_PIN=36` / `NRF_MISO_PIN=35`; na PCB fizycznie
-GP35=MOSI, GP36=MISO. Trzeba to uwzględnić przy przechodzeniu ze stykówki
-na PCB (patrz FAZA 3 / B6 niżej) — jedna zamieniona para, tak jak
-podejrzewano, reszta 22 sygnałów zgodna 1:1.
+| Sygnał | GPIO | Net / element na PCB |
+|---|---|---|
+| Gimbal L — oś Y (`LY`) | GP1 | `CH0` ← JOY_L_1 Y2 |
+| Gimbal L — oś X (`LX`) | GP2 | `CH1` ← JOY_L_1 X2 |
+| Gimbal L — przycisk | GP4 | `CH3` ← JOY_L_1 SW (R29 1k, pull-up R27) |
+| Gimbal R — oś Y (`RY`) | GP5 | `CH4` ← JOY_R_1 Y2 |
+| Gimbal R — oś X (`RX`) | GP6 | `CH5` ← JOY_R_1 X2 |
+| Gimbal R — przycisk | GP7 | `CH6` ← JOY_R_1 SW (R30 1k, pull-up R28) |
+| Fotorezystor | GP8 | `CH7` ← R9/R10/R11 przez R12 |
+| Pomiar baterii (nadajnik) | GP9 | `CH8` ← dzielnik R1 51k / R2+R3 20k, przez R4 |
+| SW_DOWN | GP11 | SW_D1 (R17 / R24) |
+| SW_CENTER | GP12 | SW_C1 (R15 / R22) |
+| SW_RIGHT | GP13 | SW_R1 (R16 / R23) |
+| SW_LEFT | GP14 | SW_L1 (R14 / R21) |
+| SW_UP | GP15 | SW_U1 (R13 / R20) |
+| I2C SCL (OLED) | GP17 | R7 33R → DS1 SCL, pull-up R5 |
+| I2C SDA (OLED) | GP18 | R8 33R → DS1 SDA, pull-up R6 |
+| nRF24 CE | GP34 | TX1 pad 3 |
+| nRF24 SCK | GP35 | TX1 pad 5 |
+| nRF24 MISO | GP36 | TX1 pad 7 |
+| nRF24 MOSI | GP37 | TX1 pad 6 |
+| nRF24 CSN | GP38 | TX1 pad 4 |
+| WS2812B DIN | GP39 | U3 74AHCT1G125 → R31 → D1..D5 |
+| SW_F2 | GP41 | SW_F2 (R18 / R25) |
+| SW_F1 | GP42 | SW_F1 (R19 / R26) |
 
 **Wolne GPIO:** GP10 (ADC1_CH9), GP16, GP33, GP40
 
@@ -319,12 +311,10 @@ więc powtórzy ten sam obraz. Trzeba porównać footprint z fizyczną części�
       i 74AHCT1G125. Upewnić się, że nie został żaden ślad po
       wcześniejszym pomyśle prowadzenia +5V do MCU.
 
-- [ ] **R1: 33k → 47k** (dzielnik BATT)
-      Obecnie przy 8,4 V: `8,4 × 20,1/53,1 = 3,18 V` — powyżej full-scale
-      ADC (~3,1 V przy 12 dB), obcięcie przy pełnym pakiecie.
-      Po zmianie: `8,4 × 20,1/67,1 = 2,52 V`, zakres liniowy.
-      W firmware: `BATTERY_DIVIDER_R_TOP_OHM` 33000 → 47000
-      (obecnie w `config.h` wciąż 33000 — zmiana czeka na rewizję PCB).
+- [x] **R1 = 51k** (dzielnik BATT; dół R2+R3 = 20k)
+      Przy 8,4 V: `8,4 × 20/71 = 2,37 V` — zakres liniowy ADC
+      (poprzednio 33k dawało 3,18 V, powyżej full-scale).
+      W firmware: `BATTERY_DIVIDER_R_TOP_OHM 51000`, `R_BOTTOM_OHM 20000`.
 
 - [ ] **R31 220R — przenieść na wyjście 74AHCT1G125**
       Teraz siedzi na wejściu bufora, gdzie nie robi nic (bramka CMOS
@@ -406,18 +396,17 @@ więc powtórzy ten sam obraz. Trzeba porównać footprint z fizyczną części�
 
 ## FAZA 3 — Firmware
 
-- [ ] **`git tag breadboard-working` PRZED jakąkolwiek zmianą pinów**
-      To jedyny punkt odniesienia „tu wszystko działało". Bez niego,
-      gdy PCB nie ruszy, nie odróżnisz błędu przemapowania od wady sprzętu.
-- [ ] **Pełne przemapowanie stykówka → PCB**, nie punktowa łatka na MOSI/MISO.
-      Przejść całą tabelę pinów, sygnał po sygnale (patrz „Mapa pinów" wyżej —
-      w praktyce to jedna para: SPI MOSI/MISO).
+- [x] **`git tag breadboard-working`** — założony na ostatnim commicie
+      sprzed zmiany pinów. Punkt odniesienia „tu wszystko działało".
+- [x] **Pełne przemapowanie stykówka → PCB** — `hardware_config.h` wg
+      netlisty `FlexRC.kicad_pcb`, każdy sygnał zweryfikowany (patrz
+      „Mapa pinów" wyżej). Zmieniły się gimbale, przyciski gimbali, D-pad
+      i całe SPI nRF24. Etykiety w `io_readings.cpp` dopasowane.
 - [ ] Po przemapowaniu: podnieść `NRF_PA_LEVEL` z PA_MIN — moduł ma PA/LNA,
       bring-up na minimum był świadomy, ale docelowo trzeba więcej.
 
 Stan reszty punktów z poprzedniej listy, zweryfikowany w kodzie:
 
-- [x] Przepisać mapę pinów wg tabeli (stykówka) — `hardware_config.h` gotowe.
 - [x] Kalibracja gimbali (min/center/max, deadband, expo) — `joysticks.cpp`
       + strony UI `calib_joy`/`set_expo`, persystencja w NVS.
 - [ ] Oversampling ADC — **zrobione tylko dla baterii** (`BATTERY_AVG_SAMPLES=8`
