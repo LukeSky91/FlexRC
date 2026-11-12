@@ -467,6 +467,38 @@ nie rozstrzygnie — trzeba porównać footprint z fizyczną częścią.
       i `displayTick()`) po tych zmianach nadal pokaże za duży jitter.
 - [ ] Wyłączyć `BATTERY_DEBUG`/`LINK_DEBUG` w `receiver.cpp` poza debugowaniem.
 
+**Skalowanie gimbali (`Joystick::processAxis()` w `joysticks.cpp`)** — przegląd 2026-11-12:
+
+- [ ] **Krzywa expo → `out = 100·((1−k)·n + k·nᵖ)`, parametry k i p per oś w menu.**
+      Decyzja 2026-11-12. Obecnie `powf(norm, 1+expo)` (domyślnie 1,8) ma zerowe
+      nachylenie w środku: pierwsza jedynka na wyjściu dopiero ~15% skoku za
+      deadzone. Nowy wzór zachowuje miękki środek, ale przy k < 1 zostaje mała
+      liniowa czułość przy zerze.
+      - **k** (0..1) — ile krzywej: 0 = liniowo, 1 = czyste nᵖ.
+      - **p** (np. 2..5, krok 0,5) — kształt. Przy k = 1 wzór = stara krzywa
+        z `expo = p − 1` (p = 4, k = 1 ≡ stare expo 3), więc p = 4 obejmuje
+        cały dotychczasowy zakres.
+      - Odpowiedniki przy p = 4 (zgodność w połowie skoku): stare expo 1 →
+        k ≈ 0,57, stare 1,8 → k ≈ 0,81. Domyślnie: p = 4, k = 0,57 (do potwierdzenia).
+      - Do zmiany: wzór w `processAxis()`; `ExpoData` w NVS rozszerzyć o p
+        per oś + nowy `EXPO_MAGIC` (stare wartości się nie wczytają);
+        `clampExpo` → 0..1, nowy `clampP`; `JOY_EXPO_DEFAULT` → k, nowy
+        `JOY_EXPO_P_DEFAULT`; API `joysticksGet/Set...` dla p;
+        strona `set_expo.cpp`: nowa pozycja p dla każdej osi, ten sam wzór
+        w podglądzie (`pctFor`) i w `clampExpoLocal`.
+      - Wydajność bez znaczenia (ESP32-S3 z FPU, `powf` ~µs × 4 osie × 50 Hz).
+      - Weryfikacja: arkusz Excel z symulacją (prompt w
+        `prompt-excel-joystick.md`, kolumna „Nowa” z `norm^p`).
+- [ ] **Środek kalibracji uśredniać** (~16 próbek) zamiast jednego odczytu
+      `readRawInvertedX/Y()` w `calib_joy.cpp`.
+- [ ] **Uśrednianie osi** — 4 próbki `analogRead()` na odczyt (szum ADC
+      ESP32-S3 ±10–20 jednostek widoczny przy końcach skoku). Pokrywa się
+      z punktem „Oversampling ADC" niżej.
+- [ ] **Margines na końcach skoku** (~2%) — `calMax/calMin` to szczyt
+      zaszumionych próbek, więc 100% bywa nieosiągalne albo miga 97–100.
+- [ ] **Limit deadzone** `ADC_MAX*400/1023` w `clampDeadzone()` to relikt
+      10-bitowego ADC (pozwala na ~78% połówki skoku) — zmniejszyć.
+
 Stan reszty punktów, zweryfikowany w kodzie:
 
 - [x] Kalibracja gimbali (min/center/max, deadband, expo) — `joysticks.cpp`
