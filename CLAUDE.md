@@ -297,6 +297,7 @@ pod stykówkę: `git tag breadboard-working`.
 | SW_F1 | GP42 | SW_F1 (R19 / R26) |
 
 **Wolne GPIO (niepodłączone na PCB):** GP10 (ADC1_CH9), GP16, GP33, GP40.
+**Planowane (FAZA 1A, złącze OLED I2C/SPI):** GP16 = OLED CS, GP33 = OLED DC, GP40 = OLED RES — wtedy wolne tylko GP10.
 nRF24 IRQ (TX1 pad 8) niepodłączony.
 
 ---
@@ -378,6 +379,44 @@ nie rozstrzygnie — trzeba porównać footprint z fizyczną częścią.
   już tylko WS2812B (do 300 mA) wobec 3 A. Zapas 10×.
 - ~~zmierzyć napięcie wyjściowe U2~~ — nieistotne, odkąd U2 nie zasila MCU.
 
+- [ ] **OLED — złącze uniwersalne I2C/SPI (decyzja 2026-11-12).**
+      OLED nie siedzi na PCB: wpięty krótkimi przewodami w terminal,
+      przykręcony do plexi. Footprint modułu OLED znika z PCB, w jego miejsce
+      **7-pinowy terminal**, żeby w razie potrzeby przejść na OLED SPI bez
+      nowej płytki:
+
+      | pin | I2C (montaż domyślny) | SPI (wariant awaryjny) |
+      |---|---|---|
+      | 1 | GND | GND |
+      | 2 | +3.3V | +3.3V |
+      | 3 | GP17 → R7 33R → SCL | SCK |
+      | 4 | GP18 → R8 33R → SDA | MOSI |
+      | 5 | — | CS ← GP16 |
+      | 6 | — | DC ← GP33 |
+      | 7 | — | RES ← GP40 |
+
+      - R5/R6 (pull-upy 5k1) oznaczyć w schemacie jako **„tylko I2C”** —
+        przy SPI nie lutować. R7/R8 33R zostają w obu wariantach.
+      - SPI dla OLED na **osobnym kontrolerze** (SPI3 przez matrycę GPIO),
+        nie dzieli magistrali z nRF24 (SPI2).
+      - Po zmianie wolne zostaje tylko GP10 — świadomie, wolne piny nie są
+        potrzebne (ewentualne zmiany → rewizja V2).
+      - **Moduł: Waveshare 1.3inch OLED (B)** (Botland 10451), SH1106 128×64,
+        3,3/5 V, 40,5 × 37,5 mm. Fabrycznie **4-wire SPI** (BS0=0, BS1=0);
+        I2C wymaga przelutowania rezystorów BS na spodzie (BS1=1, BS0=0),
+        wtedy DIN=SDA, CLK=SCL, **D/C = adres** (GND → 0x3C, więc GP33 trzymać
+        w stanie niskim), RST nadal używany. Wiki:
+        https://www.waveshare.com/wiki/1.3inch_OLED_(B)
+      - **Pinout modułu (Botland, goldpin 2,54 mm, 8 pinów):** 1 VCC, 2 GND,
+        3 NC, 4 DIN, 5 CLK, 6 CS (aktywny niski), 7 D/C, 8 RES (aktywny niski).
+        Terminal na PCB robimy **8-pinowy w tej samej kolejności**, żeby
+        przewód szedł 1:1: 1 +3.3V, 2 GND, 3 NC, 4 GP18, 5 GP17, 6 GP16,
+        7 GP33, 8 GP40. (Zastępuje tabelę 7-pinową wyżej.)
+      - Opcjonalnie pull-up 10k na CS — wyświetlacz odznaczony podczas bootu ESP.
+      - **Propozycja (do decyzji): start od razu na SPI** (ustawienie fabryczne, bez
+        lutowania; R5/R6 niewlutowane, footprinty jako zapas dla I2C).
+        Firmware: konstruktor U8g2 dla SH1106 4W HW SPI + piny w `hardware_config.h`.
+
 ### 1B. Porządki w schemacie (miedź bez zmian)
 
 - [x] Etykiety tekstowe w `MCU.kicad_sch`: `SCL=GP17`, `SDA=GP18`
@@ -426,6 +465,54 @@ nie rozstrzygnie — trzeba porównać footprint z fizyczną częścią.
 - [ ] **Pierwsze uruchomienie firmware na PCB:** strona `io_readings` —
       przejść każde wejście (osie, przyciski, LDR, bateria) i porównać
       z tabelą pinów. Potem kalibracja gimbali od nowa.
+
+---
+
+## Założenia rewizji V2 PCB (ustalone 2026-11-12, po V1)
+
+- **Enkoder EC11 z przyciskiem zamiast D-pada** (SW_U/D/L/R/C znikają).
+  **Schemat V2 (2026-11-12): ENC_A = GP14, ENC_B = GP15, ENC_SW = GP12.**
+  Obwody po dawnym D-padzie: R14/R21 (A), R13/R20 (B), R15/R22 (SW);
+  C12/C13 = 10 nF (A/B), C14 = 100 nF (SW).
+  A/B: pull-up 10k + 10 nF do GND (filtr RC na drgania styków).
+  Firmware: dekodowanie kwadratury sprzętowo (PCNT), podpięcie pod
+  zdarzenia `ui_input` (`pageNext`/`selectNext`/`enter`); obrót = zmiana
+  wartości/pozycji.
+  **Montaż: enkoder w plexi** (tuleja M7 + nakrętka, najkrótszy wałek ~15 mm,
+  niskie pokrętło; wybrany PEC11R ma wałek 20 mm), przewodami do **5-pinowego terminala na PCB** w kolejności
+  pinów enkodera: 1 A, 2 C (GND), 3 B, 4 S1 (przycisk), 5 S2 (GND).
+  Na PCB: pull-up 10k + 10 nF na A i B, pull-up 10k (+ opc. 1k) na S1.
+  Symbol: `Device:RotaryEncoder_Switch` (EC11, np. Alps EC11E lub odpowiednik).
+- **Przyciski: F1 (link), F2 (arming), F3 (wstecz)** — bez D-pada, bez
+  drabinki rezystorowej (decyzja 2026-11-12).
+  **Schemat V2 (stan 2026-11-13):** F1 = GP42 (SW_F1, R19/R26, C18),
+  F2 = GP41 (SW_F2, R18/R25, C17), F3 = GP11 (symbol nadal nazywa się
+  SW_D1, R17/R24, C16 — do przemianowania na SW_F3). Wolne: GP10, GP13.
+- **Enkoder wybrany: Bourns PEC11R** (TME), 24 imp./24 zatrzaski,
+  z przyciskiem, wałek radełkowany 6 × 20 mm (gałka pod radełko 6 mm albo na
+  śrubkę). 1 zatrzask = pełny cykl kwadratury (4 zbocza) → w firmware
+  1 krok = 4 zbocza PCNT.
+- **Obsługa UI (styl panelu Carel pGD1):** enkoder przewija ekrany/menu,
+  klik wchodzi w opcję, obrót zmienia wartość, klik zatwierdza i przechodzi
+  do następnej zmiennej; po ostatniej zmiennej obrót znów przewija ekrany.
+  F3 = wstecz. Dedykowany F2 do armowania zostaje (bezpieczeństwo).
+- **Trymy przez enkoder na ekranie głównym:** obrót = trym wybranej osi,
+  klik = następna oś (LX→LY→RX→RY), F3 = wejście do menu. OLED pokazuje
+  np. „TRIM RX −3". Firmware: trym per oś w NVS (jak deadzone/limit),
+  dodawany do wyjścia po krzywej i limicie, clamp −100..100, zakres ±20, krok 1.
+- **ESP32 w centrum PCB** (miejsce po footprincie OLED), blisko nRF24:
+  - OK pod warunkiem, że Wi-Fi/BLE ESP32 nie są używane — antena modułu
+    w środku płytki i 2,4 GHz kilka cm od nRF. Jeśli BLE kiedyś potrzebne →
+    antena modułu przy krawędzi / wycięcie masy.
+  - ciągła wylewka GND pod ESP i nRF, przelotki wokół nRF
+  - AP63203 i buck 5V z dala od nRF i toru do SMA
+  - C7/C8 przy pinach VCC/GND nRF24
+  - analogi gimbali (GP1–GP7) z dala od SPI i przetwornic, krótkie
+- Złącze OLED (patrz FAZA 1A) przenosi się do V2. **Stan schematu V2
+  (2026-11-13):** DIN ← GP18 (bez rezystora), CLK ← R7 33R ← GP17
+  (+ R5 5k1 pull-up — przy SPI DNP), CS ← R8 33R ← GP16 (+ R6 5k1 pull-up,
+  zostaje). Do dokończenia: etykieta GP16 przy ESP niepodpięta do pinu,
+  D/C → GP33 i RES → GP40 niepodłączone, NC (pin 3) bez znacznika no-connect.
 
 ---
 
@@ -479,7 +566,7 @@ nie rozstrzygnie — trzeba porównać footprint z fizyczną częścią.
         z `expo = p − 1` (p = 4, k = 1 ≡ stare expo 3), więc p = 4 obejmuje
         cały dotychczasowy zakres.
       - Odpowiedniki przy p = 4 (zgodność w połowie skoku): stare expo 1 →
-        k ≈ 0,57, stare 1,8 → k ≈ 0,81. Domyślnie: p = 4, k = 0,57 (do potwierdzenia).
+        k ≈ 0,57, stare 1,8 → k ≈ 0,81. Domyślnie: p = 4, k = 0,57 (punkt startowy, i tak regulowane w menu).
       - Do zmiany: wzór w `processAxis()`; `ExpoData` w NVS rozszerzyć o p
         per oś + nowy `EXPO_MAGIC` (stare wartości się nie wczytają);
         `clampExpo` → 0..1, nowy `clampP`; `JOY_EXPO_DEFAULT` → k, nowy
