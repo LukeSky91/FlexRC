@@ -7081,7 +7081,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "SSD1306_128x64"
+		(property "Value" "SH1106_128x64"
 			(at 248.92 25.3999 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7092,7 +7092,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "flexrc_footprints:OLED_SSD1306_128x64_Module"
+		(property "Footprint" "flexrc_footprints:OLED_SH1106_128x64_Module"
 			(at 240.157 9.525 0)
 			(hide yes)
 			(show_name no)
@@ -7114,7 +7114,7 @@
 				)
 			)
 		)
-		(property "Description" "SSD1306 OLED module, I2C interface. Pin labeled SCK on module silkscreen corresponds to I2C SCL."
+		(property "Description" "SH1106 OLED module, I2C interface. Pin labeled SCK on module silkscreen corresponds to I2C SCL."
 			(at 250.825 6.223 0)
 			(hide yes)
 			(show_name no)
