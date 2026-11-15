@@ -297,7 +297,7 @@ pod stykówkę: `git tag breadboard-working`.
 | SW_F1 | GP42 | SW_F1 (R19 / R26) |
 
 **Wolne GPIO (niepodłączone na PCB):** GP10 (ADC1_CH9), GP16, GP33, GP40.
-**Planowane (FAZA 1A, złącze OLED I2C/SPI):** GP16 = OLED CS, GP33 = OLED DC, GP40 = OLED RES — wtedy wolne tylko GP10.
+**V2 (schemat 2026-11-15):** OLED DIN=GP13, CLK=GP16, CS=GP17, D/C=GP18, RES=GP33; wolne GP10 i GP40. Tabela powyżej opisuje V1.
 nRF24 IRQ (TX1 pad 8) niepodłączony.
 
 ---
@@ -404,14 +404,15 @@ nie rozstrzygnie — trzeba porównać footprint z fizyczną częścią.
       - **Moduł: Waveshare 1.3inch OLED (B)** (Botland 10451), SH1106 128×64,
         3,3/5 V, 40,5 × 37,5 mm. Fabrycznie **4-wire SPI** (BS0=0, BS1=0);
         I2C wymaga przelutowania rezystorów BS na spodzie (BS1=1, BS0=0),
-        wtedy DIN=SDA, CLK=SCL, **D/C = adres** (GND → 0x3C, więc GP33 trzymać
+        wtedy DIN=SDA, CLK=SCL, **D/C = adres** (GND → 0x3C, więc D/C (w V2: GP18) trzymać
         w stanie niskim), RST nadal używany. Wiki:
         https://www.waveshare.com/wiki/1.3inch_OLED_(B)
       - **Pinout modułu (Botland, goldpin 2,54 mm, 8 pinów):** 1 VCC, 2 GND,
         3 NC, 4 DIN, 5 CLK, 6 CS (aktywny niski), 7 D/C, 8 RES (aktywny niski).
         Terminal na PCB robimy **8-pinowy w tej samej kolejności**, żeby
-        przewód szedł 1:1: 1 +3.3V, 2 GND, 3 NC, 4 GP18, 5 GP17, 6 GP16,
-        7 GP33, 8 GP40. (Zastępuje tabelę 7-pinową wyżej.)
+        przewód szedł 1:1. **Ostatecznie w schemacie V2 (2026-11-15):** 1 +3.3V,
+        2 GND, 3 NC, 4 DIN ← R7 33R ← GP13, 5 CLK ← R8 33R ← GP16, 6 CS ← GP17,
+        7 D/C ← GP18, 8 RES ← GP33. (Zastępuje tabelę 7-pinową wyżej.)
       - Opcjonalnie pull-up 10k na CS — wyświetlacz odznaczony podczas bootu ESP.
       - **Propozycja (do decyzji): start od razu na SPI** (ustawienie fabryczne, bez
         lutowania; R5/R6 niewlutowane, footprinty jako zapas dla I2C).
@@ -487,7 +488,7 @@ nie rozstrzygnie — trzeba porównać footprint z fizyczną częścią.
   drabinki rezystorowej (decyzja 2026-11-12).
   **Schemat V2 (stan 2026-11-13):** F1 = GP42 (SW_F1, R19/R26, C18),
   F2 = GP41 (SW_F2, R18/R25, C17), F3 = GP11 (symbol nadal nazywa się
-  SW_D1, R17/R24, C16 — do przemianowania na SW_F3). Wolne: GP10, GP13.
+  SW_D1, R17/R24, C16; opis na schemacie już SW_F3). Wolne: GP10, GP40.
 - **Enkoder wybrany: Bourns PEC11R** (TME), 24 imp./24 zatrzaski,
   z przyciskiem, wałek radełkowany 6 × 20 mm (gałka pod radełko 6 mm albo na
   śrubkę). 1 zatrzask = pełny cykl kwadratury (4 zbocza) → w firmware
@@ -509,10 +510,10 @@ nie rozstrzygnie — trzeba porównać footprint z fizyczną częścią.
   - C7/C8 przy pinach VCC/GND nRF24
   - analogi gimbali (GP1–GP7) z dala od SPI i przetwornic, krótkie
 - Złącze OLED (patrz FAZA 1A) przenosi się do V2. **Stan schematu V2
-  (2026-11-13):** DIN ← GP18 (bez rezystora), CLK ← R7 33R ← GP17
-  (+ R5 5k1 pull-up — przy SPI DNP), CS ← R8 33R ← GP16 (+ R6 5k1 pull-up,
-  zostaje). Do dokończenia: etykieta GP16 przy ESP niepodpięta do pinu,
-  D/C → GP33 i RES → GP40 niepodłączone, NC (pin 3) bez znacznika no-connect.
+  (2026-11-15, sprawdzony):** DIN ← R7 33R ← GP13, CLK ← R8 33R ← GP16,
+  CS ← GP17, D/C ← GP18, RES ← GP33. R5/R6 5k1 = pull-upy na DIN/CLK
+  (SDA/SCL w trybie I2C) — przy SPI DNP. Stary symbol DS2 (OLED I2C)
+  zostawiony poza płytką i BOM.
 
 ---
 
