@@ -4068,7 +4068,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "1e433760-6ab0-4fb6-8606-469754ce38c9")
-		(property "Reference" "SW_D1"
+		(property "Reference" "SW_F3"
 			(at 46.99 116.84 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4143,7 +4143,7 @@
 		(instances
 			(project "FlexRC"
 				(path "/0116ad82-ac95-4a03-bd4e-94de3191d2e0/e8e351e4-faf1-4c4b-86a9-7821414fba43"
-					(reference "SW_D1")
+					(reference "SW_F3")
 					(unit 1)
 				)
 			)
