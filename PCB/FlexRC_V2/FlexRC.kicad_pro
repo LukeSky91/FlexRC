@@ -717,7 +717,7 @@
         "uuid": "0116ad82-ac95-4a03-bd4e-94de3191d2e0"
       }
     ],
-    "used_designators": "R11,R32,#FLG4,#PWR52,#PWR84-86,D6,Q1,C29,DS1,SW1,J2",
+    "used_designators": "R11,R32,#FLG4,#PWR52,#PWR84-86,D6,Q1,C29,DS1-2,SW1,J2",
     "variants": []
   },
   "sheets": [
